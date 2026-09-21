@@ -10,6 +10,7 @@
     var who = [];
     if (s.manager || s.管理人) who.push("管理人／創作者：" + (s.manager || s.管理人));
     if (s.approver || s.核准GM) who.push("核准 GM：" + (s.approver || s.核准GM));
+    else if ((s.source || s.來源) === "自創") who.push("核准 GM：未登記");
     el.innerHTML =
       '<span class="tag">' + escapeHtml(s.source || (s.來源 || "學派")) + "</span>" +
       "<h2>" + escapeHtml(s.name || s.學派 || "") + "</h2>" +

@@ -25,7 +25,9 @@ function onOpen() {
     {name: '發布目前選取的一列', functionName: 'publishSelected'},
     {name: '發布所有待審的初創申請', functionName: 'publishApproved'},
     {name: '發布所有待審的運營申請', functionName: 'publishOps'},
-    {name: '重整審核表', functionName: 'rebuildReviewTab'}
+    {name: '重整審核表', functionName: 'rebuildReviewTab'},
+    {name: '設定核准GM顯示名稱', functionName: 'setApproverName'},
+    {name: '回填學派表核准GM', functionName: 'backfillApprover'}
   ]);
   try { maybeFixMagicCatalog_(); } catch (e) { Logger.log(e); }
 }
@@ -225,13 +227,76 @@ function nextCustomSchoolRow_(list) {
   return last + 1;
 }
 
-function gmIdentity_() {
-  var email = '';
-  try { email = Session.getActiveUser().getEmail() || ''; } catch (e) {}
-  if (!email) {
-    try { email = Session.getEffectiveUser().getEmail() || ''; } catch (e2) {}
+function approverLabelCell_() {
+  var sh = master_().getSheetByName('說明');
+  if (!sh) return null;
+  if (String(sh.getRange('A30').getValue() || '') !== '預設核准GM') {
+    sh.getRange('A30').setValue('預設核准GM');
   }
-  return email || 'GM';
+  return sh.getRange('B30');
+}
+
+function setApproverName() {
+  var ui = SpreadsheetApp.getUi();
+  var current = gmIdentity_();
+  var res = ui.prompt('核准 GM 顯示名稱', '會寫進學派表「核准GM」與入口名冊。現在：' + (current || '（空白）'), ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+  var name = String(res.getResponseText() || '').trim();
+  if (!name) { alert_('未輸入。'); return; }
+  PropertiesService.getDocumentProperties().setProperty('approverName', name);
+  var cell = approverLabelCell_();
+  if (cell) cell.setValue(name);
+  alert_('已設為：' + name + '\n請再執行「回填學派表核准GM」讓舊列也出現。');
+}
+
+function gmIdentity_() {
+  var named = '';
+  try { named = PropertiesService.getDocumentProperties().getProperty('approverName') || ''; } catch (e) {}
+  if (!named) {
+    var cell = approverLabelCell_();
+    if (cell) named = String(cell.getValue() || '').trim();
+  }
+  var email = '';
+  try { email = Session.getActiveUser().getEmail() || ''; } catch (e2) {}
+  if (!email) {
+    try { email = Session.getEffectiveUser().getEmail() || ''; } catch (e3) {}
+  }
+  if (named && email && named.indexOf(email) < 0) return named + '（' + email + '）';
+  return named || email || '';
+}
+
+function backfillApprover() {
+  var label = gmIdentity_();
+  if (!label) {
+    setApproverName();
+    label = gmIdentity_();
+  }
+  if (!label) { alert_('仍沒有核准GM名稱。請先「設定核准GM顯示名稱」。'); return; }
+  var list = master_().getSheetByName('學派表');
+  ensureSchoolListHeaders_(list);
+  var card = master_().getSheetByName('學派卡');
+  var cardMap = {};
+  if (card && card.getLastRow() >= 3) {
+    var cv = card.getRange(3, 1, card.getLastRow() - 2, 23).getValues();
+    for (var i = 0; i < cv.length; i++) {
+      var n = String(cv[i][1] || '').trim();
+      if (n) cardMap[n] = String(cv[i][22] || '').trim();
+    }
+  }
+  var rows = schoolListRows_(list);
+  var n = 0;
+  for (var j = 0; j < rows.length; j++) {
+    var r = rows[j];
+    var name = String(list.getRange(r, 1).getValue() || '').trim();
+    if (!isSchoolName_(name)) continue;
+    if (String(list.getRange(r, 5).getValue() || '') === '官方') continue;
+    var cur = String(list.getRange(r, 11).getValue() || '').trim();
+    if (cur) continue;
+    var fromCard = cardMap[name];
+    list.getRange(r, 11).setValue(fromCard || label);
+    n++;
+  }
+  alert_('已回填 ' + n + ' 列核准GM。');
 }
 
 function ensureSchoolListHeaders_(sh) {
@@ -250,6 +315,10 @@ function listSchools_() {
     var name = String(row[0] || '').trim();
     if (!isSchoolName_(name)) continue;
     if (String(row[7] || '') === '停用') continue;
+    var approver = String(row[10] || '').trim();
+    if (!approver && String(row[4] || '') === '自創') {
+      approver = String(cardApprover_(name) || '').trim();
+    }
     out.push({
       name: name,
       creed: row[1],
@@ -257,17 +326,27 @@ function listSchools_() {
       note: row[3],
       source: row[4] || '',
       manager: row[5] || '',
-      approver: row[10] || '',
+      approver: approver,
       學派: name,
       信條: row[1],
       學派魔法: row[2],
       特記事項: row[3],
       來源: row[4],
       管理人: row[5] || '',
-      核准GM: row[10] || ''
+      核准GM: approver
     });
   }
   return out;
+}
+
+function cardApprover_(schoolName) {
+  var card = master_().getSheetByName('學派卡');
+  if (!card || card.getLastRow() < 3) return '';
+  var cv = card.getRange(3, 2, card.getLastRow() - 2, 22).getValues();
+  for (var i = 0; i < cv.length; i++) {
+    if (String(cv[i][0] || '').trim() === schoolName) return String(cv[i][21] || '');
+  }
+  return '';
 }
 
 function listCards_() {
@@ -919,6 +998,9 @@ function publishOpsRow_(ss, apply, r) {
   list.getRange(lr, 4).setValue(disp.notes);
   list.getRange(lr, 7).setValue(level);
   list.getRange(lr, 10).setValue(now);
+  if (!String(list.getRange(lr, 11).getValue() || '').trim()) {
+    list.getRange(lr, 11).setValue(gmIdentity_());
+  }
 }
 
 function publishFoundingRow_(ss, apply, r) {
