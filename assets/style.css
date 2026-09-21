@@ -137,6 +137,31 @@ form.wizard textarea { min-height: 90px; resize: vertical; }
 }
 .math strong { color: var(--gold); }
 .hint { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
+.rule {
+  border-left: 3px solid var(--gold-dim);
+  padding: 8px 12px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.65;
+  background: rgba(0,0,0,0.18);
+}
+label.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--ink);
+  margin: 16px 0 8px;
+  cursor: pointer;
+}
+label.check input { width: auto; margin-top: 4px; }
+.reveal { margin: 8px 0 12px; }
+.math.sticky {
+  margin: 0 0 16px;
+  position: sticky;
+  top: 8px;
+  z-index: 2;
+  background: #1f1811;
+}
 footer { margin-top: 40px; color: var(--gold-dim); font-size: 13px; }
 
 @media (max-width: 700px) {

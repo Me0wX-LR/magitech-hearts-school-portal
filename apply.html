@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>申請支流學派｜School Application Portal</title>
+  <title>申請｜School Application Portal</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <div class="wrap">
     <header class="hero">
-      <p class="kicker">3.06 學派初創</p>
+      <p class="kicker">School Application Portal</p>
       <h1>申請支流學派</h1>
-      <p class="lede">填完後送到學派統合列表「申請」工作表。起始：等級 1、基本藏書 1、最大藏書 2、成長界限 3、學派功績點 3。</p>
+      <p class="lede">只填這一層用得到的欄位。起始 3 點學派功績點；等級 1、藏書 1～2、成長界限 3。</p>
       <nav class="bar">
         <a class="btn" href="index.html">返回名冊</a>
       </nav>
@@ -19,18 +19,26 @@
 
     <div id="banner"></div>
     <div class="steps" id="steps"></div>
+    <div class="math sticky" id="mathMini"></div>
 
     <form class="wizard" id="form" method="post" accept-charset="UTF-8">
       <input type="hidden" name="申請類型" value="學派初創">
       <input type="hidden" name="return" id="returnField">
+      <input type="hidden" name="優勢" id="advHidden" value="不選擇優勢">
+      <input type="hidden" name="劣勢" id="disHidden" value="不選擇劣勢">
+      <input type="hidden" name="是否追加第二本" id="extraHidden" value="否">
+      <input type="hidden" name="免費藏書序號" id="freeId">
+      <input type="hidden" name="追加藏書序號" id="extraId">
+      <input type="hidden" name="限制樣式" id="styleHidden">
+      <input type="hidden" name="追加魔法是否已由本學派PC習得" value="否">
 
       <section class="panel on" data-step="0">
         <label>管理人（必填）</label>
         <input name="管理人" required maxlength="80" placeholder="GM 或 PL 名字">
         <label>聯絡方式</label>
         <input name="聯絡方式" maxlength="120" placeholder="Discord / WhatsApp / 電郵">
-        <label>PC名</label>
-        <input name="PC名" maxlength="80" placeholder="申請時的角色名，可空">
+        <label>PC名（可空）</label>
+        <input name="PC名" maxlength="80">
       </section>
 
       <section class="panel" data-step="1">
@@ -39,7 +47,7 @@
         <label>信條（必填）</label>
         <textarea name="信條" required placeholder="所屬魔法使的行動方針。結束階段未滿足則拿不到信條功績點。"></textarea>
         <label>誕生背景</label>
-        <select name="誕生背景">
+        <select name="誕生背景" id="origin">
           <option>1 獨立（脫離原學派新設；附屬或反叛）</option>
           <option>2 同胞（到達者／共通技術）</option>
           <option>3 一族（血緣或創始超常存在）</option>
@@ -48,140 +56,139 @@
           <option selected>6 拼湊（失去居所者集合）</option>
           <option>自行描述</option>
         </select>
-        <label>誕生背景補述</label>
-        <textarea name="誕生背景補述"></textarea>
-        <div class="row2">
-          <div>
-            <label>代表性的構成成員</label>
-            <textarea name="代表性的構成成員"></textarea>
-          </div>
-          <div>
-            <label>其他設定</label>
-            <textarea name="其他設定" placeholder="徽章、成立時代、大事"></textarea>
-          </div>
+        <p class="hint" id="originHint"></p>
+        <div id="originExtra" hidden>
+          <label>誕生背景補述</label>
+          <textarea name="誕生背景補述" placeholder="原學派、技術、一族、組織或異境等細節"></textarea>
+        </div>
+        <label class="check"><input type="checkbox" id="wantFlavour"> 還要填成員／徽章等（可略過）</label>
+        <div id="flavourBox" hidden>
+          <label>代表性的構成成員</label>
+          <textarea name="代表性的構成成員"></textarea>
+          <label>其他設定</label>
+          <textarea name="其他設定" placeholder="徽章、成立時代、大事"></textarea>
         </div>
       </section>
 
       <section class="panel" data-step="2">
+        <p class="rule">初創免費 1 本學派魔法。限經歷（基本）／機關（基本・黃昏）／學派（基本・黃昏）／餐飲／醫療。不可用遺失魔法當免費本。</p>
         <label>免費藏書分類</label>
-        <select name="免費藏書分類" id="freeCat">
-          <option>經歷魔法</option>
-          <option>機關魔法</option>
-          <option>學派魔法</option>
-          <option>餐飲魔法</option>
-          <option>醫療魔法</option>
-        </select>
-        <p class="hint">初創免費 1 本。不可用遺失魔法當免費本。填序號即可（例：5013＝天秤）。</p>
-        <label>免費藏書序號</label>
-        <input name="免費藏書序號" id="freeId" inputmode="numeric" placeholder="5013">
+        <select name="免費藏書分類" id="freeCat"></select>
+        <label>選擇魔法</label>
+        <select id="freePick"><option value="">請先選分類</option></select>
         <p class="hint" id="freeHint"></p>
-        <label>是否追加第二本</label>
-        <select name="是否追加第二本" id="extraOn">
-          <option>否</option>
-          <option>是</option>
-        </select>
+        <label class="check"><input type="checkbox" id="wantExtra"> 追加第二本（花費功績點；最大藏書數＝2）</label>
         <div id="extraBox" hidden>
+          <p class="rule">經歷 COST＝3＋現有經歷數；機關＝4＋現有機關數；學派＝3；餐飲／醫療＝2；遺失＝2＋該魔法 COST。</p>
           <label>追加藏書分類</label>
-          <select name="追加藏書分類" id="extraCat">
-            <option>經歷魔法</option>
-            <option>機關魔法</option>
-            <option>學派魔法</option>
-            <option>餐飲魔法</option>
-            <option>醫療魔法</option>
-            <option>遺失魔法（僅追加，不可當免費本）</option>
-          </select>
-          <label>追加藏書序號</label>
-          <input name="追加藏書序號" id="extraId" inputmode="numeric">
+          <select name="追加藏書分類" id="extraCat"></select>
+          <label>選擇魔法</label>
+          <select id="extraPick"><option value="">請先選分類</option></select>
           <p class="hint" id="extraHint"></p>
-          <input type="hidden" name="追加魔法是否已由本學派PC習得" value="否">
         </div>
       </section>
 
       <section class="panel" data-step="3">
-        <label>優勢（初創最多 1 個）</label>
-        <select name="優勢" id="adv">
-          <option>不選擇優勢</option>
-          <option>備品：魔素（COST 2）</option>
-          <option>備品：道具（COST＝道具功績點×3）</option>
-          <option>專業性（COST 3）</option>
-          <option>獨有的魔法體系（COST 5）</option>
-          <option>異境大本營（COST 5）</option>
-          <option>學派特性（COST＝預兆COST×5）</option>
-        </select>
-        <div class="row2">
-          <div>
-            <label>備品魔素</label>
+        <p class="rule">初創最多 1 個優勢、1 個劣勢。優勢扣點，劣勢加回點。不選可以把 3 點留著。</p>
+        <label class="check"><input type="checkbox" id="wantAdv"> 選擇 1 個優勢</label>
+        <div id="advBox" hidden>
+          <label>優勢種類</label>
+          <select id="advPick">
+            <option value="">請選擇</option>
+            <option value="備品：魔素（COST 2）">備品：魔素（COST 2）— 開局獲得 1 個指定魔素</option>
+            <option value="備品：道具（COST＝道具功績點×3）">備品：道具（COST＝功績×3）— 開局獲得 1 個 2 點以下道具</option>
+            <option value="專業性（COST 3）">專業性（COST 3）— 一局可重骰一次指定判定</option>
+            <option value="獨有的魔法體系（COST 5）">獨有的魔法體系（COST 5）— 咒文或召喚可耗魔力加值</option>
+            <option value="異境大本營（COST 5）">異境大本營（COST 5）— 無視一種世界法則阻礙</option>
+            <option value="學派特性（COST＝預兆COST×5）">學派特性（COST＝預兆×5）— 全學派可做一項特殊成長</option>
+          </select>
+          <p class="hint" id="advRule"></p>
+          <div class="reveal" data-adv="備品：魔素（COST 2）">
+            <label>魔素種類</label>
             <select name="備品魔素"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option></select>
           </div>
-          <div>
-            <label>備品道具功績點</label>
+          <div class="reveal" data-adv="備品：道具（COST＝道具功績點×3）">
+            <label>道具名</label>
+            <input name="備品道具名">
+            <label>該道具所需功績點</label>
             <select name="備品道具功績點"><option></option><option>1</option><option>2</option></select>
           </div>
+          <div class="reveal" data-adv="專業性（COST 3）">
+            <label>可重骰的判定（一局一次）</label>
+            <select name="專業性判定">
+              <option></option>
+              <option>調查判定</option><option>調律判定</option><option>事件判定</option>
+              <option>為使用咒文的指定特技判定</option><option>抵抗判定</option>
+            </select>
+          </div>
+          <div class="reveal" data-adv="獨有的魔法體系（COST 5）">
+            <label>體系</label>
+            <select name="獨有體系"><option></option><option>咒文</option><option>召喚</option></select>
+          </div>
+          <div class="reveal" data-adv="異境大本營（COST 5）">
+            <label>無視哪一種世界法則</label>
+            <select name="世界法則阻礙">
+              <option></option>
+              <option>召喚阻礙</option><option>咒文阻礙</option><option>抵抗阻礙</option>
+              <option>復活阻礙</option><option>介入阻礙</option>
+            </select>
+          </div>
+          <div class="reveal" data-adv="學派特性（COST＝預兆COST×5）">
+            <label>預兆</label>
+            <select name="學派特性預兆">
+              <option></option>
+              <option>臨床（COST 1→特記 5）</option>
+              <option>惡食（COST 1→特記 5）</option>
+              <option>異境血脈（COST 2→特記 10）</option>
+              <option>復仇心（COST 2→特記 10）</option>
+              <option>古老魔法（COST 3→特記 15）</option>
+            </select>
+          </div>
         </div>
-        <label>備品道具名</label>
-        <input name="備品道具名">
-        <label>專業性判定</label>
-        <select name="專業性判定">
-          <option></option>
-          <option>調查判定</option><option>調律判定</option><option>事件判定</option>
-          <option>為使用咒文的指定特技判定</option><option>抵抗判定</option>
-        </select>
-        <label>獨有體系</label>
-        <select name="獨有體系"><option></option><option>咒文</option><option>召喚</option></select>
-        <label>世界法則阻礙</label>
-        <select name="世界法則阻礙">
-          <option></option>
-          <option>召喚阻礙</option><option>咒文阻礙</option><option>抵抗阻礙</option>
-          <option>復活阻礙</option><option>介入阻礙</option>
-        </select>
-        <label>學派特性預兆</label>
-        <select name="學派特性預兆">
-          <option></option>
-          <option>臨床（COST 1→特記 5）</option>
-          <option>惡食（COST 1→特記 5）</option>
-          <option>異境血脈（COST 2→特記 10）</option>
-          <option>復仇心（COST 2→特記 10）</option>
-          <option>古老魔法（COST 3→特記 15）</option>
-        </select>
-        <label>劣勢（初創最多 1 個；會加回 COST）</label>
-        <select name="劣勢" id="dis">
-          <option>不選擇劣勢</option>
-          <option>限制：領域（COST 1）</option>
-          <option>限制：樣式（COST 2）</option>
-          <option>藏書缺失（COST 3）</option>
-          <option>封建（COST 3）</option>
-          <option>稀薄（COST 4）</option>
-          <option>學派病（COST＝病強度）</option>
-        </select>
-        <div class="row2">
-          <div>
-            <label>限制領域</label>
+
+        <label class="check"><input type="checkbox" id="wantDis"> 選擇 1 個劣勢（加回功績點）</label>
+        <div id="disBox" hidden>
+          <label>劣勢種類</label>
+          <select id="disPick">
+            <option value="">請選擇</option>
+            <option value="限制：領域（COST 1）">限制：領域（+1）— 沒學該領域特技則臨時所屬</option>
+            <option value="限制：樣式（COST 2）">限制：樣式（+2）— 勾 2 個允許的樣式</option>
+            <option value="藏書缺失（COST 3）">藏書缺失（+3）— 不能學對應 COST 的泛用魔法</option>
+            <option value="封建（COST 3）">封建（+3）— 結束階段功績點少 1</option>
+            <option value="稀薄（COST 4）">稀薄（+4）— 魔力最大值多骰一顆取低</option>
+            <option value="學派病（COST＝病強度）">學派病（+強度）— 該病成痼疾且不能靠它拿功績</option>
+          </select>
+          <p class="hint" id="disRule"></p>
+          <div class="reveal" data-dis="限制：領域（COST 1）">
+            <label>必須習得特技的領域</label>
             <select name="限制領域"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option></select>
           </div>
-          <div>
-            <label>限制樣式（可複選，用頓號）</label>
-            <input name="限制樣式" placeholder="例如：學究、世俗">
+          <div class="reveal" data-dis="限制：樣式（COST 2）">
+            <p class="rule">勾 2 個允許的樣式。PC 沒有其中之一就是臨時所屬。</p>
+            <label class="check"><input type="checkbox" class="stylePick" value="學究"> 學究</label>
+            <label class="check"><input type="checkbox" class="stylePick" value="世俗"> 世俗</label>
+            <label class="check"><input type="checkbox" class="stylePick" value="理想"> 理想</label>
           </div>
-        </div>
-        <label>藏書缺失種類</label>
-        <select name="藏書缺失種類"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option><option>全</option><option>無</option></select>
-        <div class="row2">
-          <div>
-            <label>學派病名稱</label>
+          <div class="reveal" data-dis="藏書缺失（COST 3）">
+            <label>無法習得的泛用 COST 種類</label>
+            <select name="藏書缺失種類"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option><option>全</option><option>無</option></select>
+          </div>
+          <div class="reveal" data-dis="學派病（COST＝病強度）">
+            <label>病名</label>
             <input name="學派病名稱">
-          </div>
-          <div>
-            <label>學派病強度</label>
+            <label>強度（正整數＝加回的點數）</label>
             <input name="學派病強度" inputmode="numeric">
           </div>
         </div>
-        <label>申請備註</label>
-        <textarea name="申請備註"></textarea>
+        <label class="check"><input type="checkbox" id="wantNote"> 附加備註（可略過）</label>
+        <div id="noteBox" hidden>
+          <textarea name="申請備註"></textarea>
+        </div>
       </section>
 
       <section class="panel" data-step="4">
         <div class="math" id="math"></div>
-        <p class="hint">按下送出後會寫入 master「申請」。核准前不會進入學派表。</p>
+        <p class="hint">送出後寫入 master「申請」。核准前不會進入名冊與自動角卡。</p>
       </section>
 
       <nav class="bar" style="margin-top:18px">
@@ -190,7 +197,7 @@
         <button type="submit" class="btn primary" id="send" hidden>送出申請</button>
       </nav>
     </form>
-    <footer>COST 在瀏覽器即時試算；master 試算表會再驗一次。</footer>
+    <footer>COST 即時試算；master 會再驗一次。</footer>
   </div>
   <script src="assets/config.js"></script>
   <script src="assets/common.js"></script>

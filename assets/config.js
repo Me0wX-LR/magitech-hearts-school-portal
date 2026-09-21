@@ -2,5 +2,5 @@
 window.MH_CONFIG = {
   masterId: "1lBDzpsWRfRiL2Bi1wR5jkeDEfZJKPz-loS3m24q0esc",
   webAppUrl: "https://script.google.com/macros/s/AKfycbwQFoNBBgJ-VUOf8Pudcn2HHhwKIrMWwP8wsAe4Bt6S8PapuPkd6ZNyhifMMA4Fulnv/exec",
-  portalUrl: "https://me0wx-lr.github.io/magitech-hearts-school-portal/"
+  portalUrl: "https://me0wx-lr.github.io/school-application-portal/"
 };

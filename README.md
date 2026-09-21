@@ -1,8 +1,8 @@
 # School Application Portal
 
-GitHub Pages 上的支流學派申請入口。玩家不用複製自動角卡。送出後寫入 Google **學派統合列表**；你核准後，自動角卡用 `IMPORTRANGE` 讀取。
+School Application Portal：GitHub Pages 上的支流學派申請入口。玩家不用複製自動角卡。送出後寫入 Google **學派統合列表**；你核准後，自動角卡用 `IMPORTRANGE` 讀取。
 
-- 入口（啟用 Pages 後）：https://me0wx-lr.github.io/magitech-hearts-school-portal/
+- 入口：https://me0wx-lr.github.io/school-application-portal/
 - Master：https://docs.google.com/spreadsheets/d/1lBDzpsWRfRiL2Bi1wR5jkeDEfZJKPz-loS3m24q0esc/edit
 - 規則：《蒐集日記》3.06 學派初創
 
@@ -21,7 +21,7 @@ Repo Settings → Pages → Build from **main** / **root** (`/`).
 
 約一分鐘後可開：
 
-`https://me0wx-lr.github.io/magitech-hearts-school-portal/`
+`https://me0wx-lr.github.io/school-application-portal/`
 
 此時名冊先顯示官方 15 校（`data/official.json`）。接上 Web App 後改讀 master。
 

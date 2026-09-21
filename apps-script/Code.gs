@@ -7,7 +7,7 @@
  */
 
 var MASTER_ID = '1lBDzpsWRfRiL2Bi1wR5jkeDEfZJKPz-loS3m24q0esc';
-var PORTAL_URL = 'https://me0wx-lr.github.io/magitech-hearts-school-portal/';
+var PORTAL_URL = 'https://me0wx-lr.github.io/school-application-portal/';
 
 function master_() {
   try {
