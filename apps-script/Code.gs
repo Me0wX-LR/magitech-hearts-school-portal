@@ -57,6 +57,16 @@ function rebuildReviewTab() {
 function onEdit(e) {
   if (!e || !e.range) return;
   var sh = e.range.getSheet();
+  if (sh.getName() === '申請') {
+    var ar = e.range.getRow();
+    if (ar < 3) return;
+    var header = String(sh.getRange(1, e.range.getColumn()).getValue() || '');
+    var v = String(e.value || '').trim();
+    if ((header === '驗證結果' || header === 'GM決定') && (v === '退回' || v === '拒絕')) {
+      markRejected_(sh, ar);
+    }
+    return;
+  }
   if (sh.getName() !== '審核') return;
   var row = e.range.getRow();
   var col = e.range.getColumn();
@@ -73,15 +83,18 @@ function onEdit(e) {
   if (!target) return;
   var cStatus = col_(apply, '驗證結果');
   if (action === '退回') {
-    apply.getRange(target, cStatus).setValue('退回');
+    markRejected_(apply, target);
     return;
   }
   if (action === '發布') {
     try {
+      if (isFrozenStatus_(gmStatus_(apply, target)) && gmStatus_(apply, target) !== '已發布') {
+        return;
+      }
       var type = String(apply.getRange(target, col_(apply, '申請類型')).getValue());
       if (type === '學派初創') publishFoundingRow_(e.source, apply, target);
       else publishOpsRow_(e.source, apply, target);
-      apply.getRange(target, cStatus).setValue('已發布');
+      markPublished_(apply, target);
     } catch (err) {
       apply.getRange(target, cStatus).setNote(String(err.message || err));
     }
@@ -347,7 +360,40 @@ function fillFormulas() {
   var sh = master_().getSheetByName('申請');
   var last = sh.getLastRow();
   if (last < 3) { alert_('尚無需要填滿的列。'); return; }
+  ensureGmColumn_(sh);
+  var cStatus = col_(sh, '驗證結果');
+  var cGm = col_(sh, 'GM決定');
+  var frozen = [];
+  for (var r = 3; r <= last; r++) {
+    frozen.push({
+      am: sh.getRange(r, cStatus).getValue(),
+      gm: sh.getRange(r, cGm).getValue()
+    });
+  }
   sh.getRange('AL2:AW2').copyTo(sh.getRange('AL3:AW' + last), {contentsOnly: false});
+  for (var i = 0; i < frozen.length; i++) {
+    var st = String(frozen[i].am || '').trim();
+    if (isFrozenStatus_(st)) sh.getRange(3 + i, cStatus).setValue(st);
+    if (frozen[i].gm) sh.getRange(3 + i, cGm).setValue(frozen[i].gm);
+  }
+}
+
+function ensureGmColumn_(sh) {
+  var lastCol = Math.max(sh.getLastColumn(), 50);
+  sh.getRange(1, 50).setValue('GM決定');
+  return 50;
+}
+
+function isFrozenStatus_(s) {
+  s = String(s || '').trim();
+  return s === '退回' || s === '已發布' || s === '拒絕' || s === 'Reject';
+}
+
+function gmStatus_(apply, r) {
+  ensureGmColumn_(apply);
+  var decided = String(apply.getRange(r, col_(apply, 'GM決定')).getValue() || '').trim();
+  if (decided) return decided;
+  return String(apply.getRange(r, col_(apply, '驗證結果')).getValue() || '').trim();
 }
 
 function col_(sh, header) {
@@ -372,41 +418,60 @@ function nextSchoolId_(ss) {
   return 'CUS-' + ('000' + (n + 1)).slice(-3);
 }
 
+function markPublished_(apply, r) {
+  ensureGmColumn_(apply);
+  apply.getRange(r, col_(apply, '驗證結果')).setValue('已發布');
+  apply.getRange(r, col_(apply, 'GM決定')).setValue('已發布');
+}
+
+function markRejected_(apply, r) {
+  ensureGmColumn_(apply);
+  apply.getRange(r, col_(apply, '驗證結果')).setValue('退回');
+  apply.getRange(r, col_(apply, 'GM決定')).setValue('退回');
+}
+
 function publishApproved() {
   var ss = master_();
   var apply = ss.getSheetByName('申請');
   var last = apply.getLastRow();
   if (last < 2) { alert_('沒有申請列。'); return; }
-  var cStatus = col_(apply, '驗證結果');
-  var published = 0, skipped = 0;
-  for (var r = 2; r <= last; r++) {
-    var status = String(apply.getRange(r, cStatus).getValue());
-    if (status !== '待審核') continue;
+  var published = 0, rejected = 0, skipped = 0;
+  for (var r = 3; r <= last; r++) {
+    var status = gmStatus_(apply, r);
+    if (isFrozenStatus_(status) && status !== '已發布') { rejected++; continue; }
+    if (status === '已發布') { skipped++; continue; }
+    if (status !== '待審核') { skipped++; continue; }
     var type = String(apply.getRange(r, col_(apply, '申請類型')).getValue());
     var msg = String(apply.getRange(r, col_(apply, '驗證訊息')).getValue());
     var name = String(apply.getRange(r, col_(apply, '學派名')).getValue());
     if (name.indexOf('測試') === 0 || type !== '學派初創' || msg !== '通過') { skipped++; continue; }
     publishFoundingRow_(ss, apply, r);
-    apply.getRange(r, cStatus).setValue('已發布');
+    markPublished_(apply, r);
     published++;
   }
-  alert_('已發布 ' + published + ' 筆初創。略過 ' + skipped + ' 筆。');
+  alert_('已發布 ' + published + ' 筆初創。退回略過 ' + rejected + ' 筆。其他略過 ' + skipped + ' 筆。');
 }
 
 function publishSelected() {
   var ss = master_();
   var apply = ss.getSheetByName('申請');
-  var cell = apply.getActiveCell();
-  var r = cell.getRow();
-  if (r < 2) { alert_('請先點「申請」工作表裡要發布的那一列。'); return; }
-  var status = String(apply.getRange(r, col_(apply, '驗證結果')).getValue());
+  var active = ss.getActiveSheet();
+  var r;
+  if (active.getName() === '審核') {
+    r = findApplyRow_(apply, active.getActiveCell().getRow() >= 5 ? active.getRange(active.getActiveCell().getRow(), 1).getValue() : '', active.getRange(Math.max(active.getActiveCell().getRow(), 5), 5).getValue());
+    if (!r) { alert_('在「審核」找不到對應的申請列。請改點「申請」那一列再發布。'); return; }
+  } else {
+    r = apply.getActiveCell().getRow();
+  }
+  if (r < 3) { alert_('請先點「申請」工作表裡要發布的那一列。'); return; }
+  var status = gmStatus_(apply, r);
   if (status === '已發布') { alert_('這一列已經發布過。'); return; }
-  if (status === '退回') { alert_('這一列已退回，不會發布。'); return; }
+  if (isFrozenStatus_(status)) { alert_('這一列已退回，不會發布。'); return; }
   var type = String(apply.getRange(r, col_(apply, '申請類型')).getValue());
   try {
     if (type === '學派初創') publishFoundingRow_(ss, apply, r);
     else publishOpsRow_(ss, apply, r);
-    apply.getRange(r, col_(apply, '驗證結果')).setValue('已發布');
+    markPublished_(apply, r);
     alert_('已發布第 ' + r + ' 列（' + type + '）。');
   } catch (err) {
     alert_('發布失敗：' + err.message);
@@ -418,16 +483,16 @@ function publishOps() {
   var apply = ss.getSheetByName('申請');
   var last = apply.getLastRow();
   if (last < 2) { alert_('沒有申請列。'); return; }
-  var cStatus = col_(apply, '驗證結果');
   var published = 0, skipped = 0;
-  for (var r = 2; r <= last; r++) {
-    var status = String(apply.getRange(r, cStatus).getValue());
+  for (var r = 3; r <= last; r++) {
+    var status = gmStatus_(apply, r);
+    if (isFrozenStatus_(status)) { skipped++; continue; }
     if (status !== '待審核') continue;
     var type = String(apply.getRange(r, col_(apply, '申請類型')).getValue());
     if (type.indexOf('運營') !== 0) { skipped++; continue; }
     try {
       publishOpsRow_(ss, apply, r);
-      apply.getRange(r, cStatus).setValue('已發布');
+      markPublished_(apply, r);
       published++;
     } catch (err) {
       skipped++;
