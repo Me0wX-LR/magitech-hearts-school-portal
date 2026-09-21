@@ -33,6 +33,7 @@
   MH.loadSchools().then(function (data) {
     rows = (data && data.schools) ? data.schools : data;
     if (!Array.isArray(rows)) rows = [];
+    rows = rows.filter(MH.isRealSchool);
     if (data && data.fallback) {
       status.textContent = "目前顯示官方種子名冊。部署 Web App 並填入 assets/config.js 的 webAppUrl 後，會改讀 master 已核准列。";
     } else {

@@ -202,11 +202,9 @@ function doGet(e) {
 function isSchoolName_(name) {
   name = String(name || '').trim();
   if (!name) return false;
-  if (name.charAt(0) === '↑') return false;
-  if (name.indexOf('官方 15') >= 0) return false;
-  if (name.indexOf('占位') >= 0) return false;
-  if (name.indexOf('請自行') >= 0) return false;
-  if (name.indexOf('不要手寫') >= 0) return false;
+  if (/[↑⬆⇧]/.test(name)) return false;
+  if (/官方\s*15/.test(name)) return false;
+  if (/占位|不要手寫|請自行|Apps Script|追加在第/.test(name)) return false;
   return true;
 }
 
