@@ -26,7 +26,7 @@ function onOpen() {
     {name: '發布所有待審的初創申請', functionName: 'publishApproved'},
     {name: '發布所有待審的運營申請', functionName: 'publishOps'},
     {name: '重整審核表', functionName: 'rebuildReviewTab'},
-    {name: '設定核准GM顯示名稱', functionName: 'setApproverName'},
+    {name: '設定核准GM名稱與聯絡', functionName: 'setApproverName'},
     {name: '回填學派表核准GM', functionName: 'backfillApprover'}
   ]);
   try { maybeFixMagicCatalog_(); } catch (e) { Logger.log(e); }
@@ -227,42 +227,58 @@ function nextCustomSchoolRow_(list) {
   return last + 1;
 }
 
-function approverLabelCell_() {
+function ensureApproverCells_() {
   var sh = master_().getSheetByName('說明');
-  if (!sh) return null;
-  if (String(sh.getRange('A30').getValue() || '') !== '預設核准GM') {
-    sh.getRange('A30').setValue('預設核准GM');
-  }
-  return sh.getRange('B30');
+  if (!sh) return;
+  sh.getRange('A30').setValue('預設核准GM');
+  sh.getRange('A31').setValue('核准GM聯絡方法');
 }
 
 function setApproverName() {
   var ui = SpreadsheetApp.getUi();
-  var current = gmIdentity_();
-  var res = ui.prompt('核准 GM 顯示名稱', '會寫進學派表「核准GM」與入口名冊。現在：' + (current || '（空白）'), ui.ButtonSet.OK_CANCEL);
+  ensureApproverCells_();
+  var res = ui.prompt('核准 GM 顯示名稱', '寫進學派表 K 欄「核准GM」。現在：' + (gmIdentity_() || '（空白）'), ui.ButtonSet.OK_CANCEL);
   if (res.getSelectedButton() !== ui.Button.OK) return;
   var name = String(res.getResponseText() || '').trim();
-  if (!name) { alert_('未輸入。'); return; }
-  PropertiesService.getDocumentProperties().setProperty('approverName', name);
-  var cell = approverLabelCell_();
-  if (cell) cell.setValue(name);
-  alert_('已設為：' + name + '\n請再執行「回填學派表核准GM」讓舊列也出現。');
+  if (!name) { alert_('未輸入名稱。'); return; }
+  var res2 = ui.prompt('核准 GM 聯絡方法', 'Discord / WhatsApp / 電郵等。現在：' + (gmContact_() || '（空白）'), ui.ButtonSet.OK_CANCEL);
+  var contact = '';
+  if (res2.getSelectedButton() === ui.Button.OK) contact = String(res2.getResponseText() || '').trim();
+  var props = PropertiesService.getDocumentProperties();
+  props.setProperty('approverName', name);
+  props.setProperty('approverContact', contact);
+  var sh = master_().getSheetByName('說明');
+  if (sh) {
+    sh.getRange('B30').setValue(name);
+    sh.getRange('B31').setValue(contact);
+  }
+  alert_('核准GM：' + name + '\n聯絡：' + (contact || '（未填）') + '\n請再執行「回填學派表核准GM」。');
 }
 
 function gmIdentity_() {
   var named = '';
   try { named = PropertiesService.getDocumentProperties().getProperty('approverName') || ''; } catch (e) {}
   if (!named) {
-    var cell = approverLabelCell_();
-    if (cell) named = String(cell.getValue() || '').trim();
+    var sh = master_().getSheetByName('說明');
+    if (sh) named = String(sh.getRange('B30').getValue() || '').trim();
   }
   var email = '';
   try { email = Session.getActiveUser().getEmail() || ''; } catch (e2) {}
   if (!email) {
     try { email = Session.getEffectiveUser().getEmail() || ''; } catch (e3) {}
   }
-  if (named && email && named.indexOf(email) < 0) return named + '（' + email + '）';
+  if (named && email && named.indexOf(email) < 0) return named;
   return named || email || '';
+}
+
+function gmContact_() {
+  var c = '';
+  try { c = PropertiesService.getDocumentProperties().getProperty('approverContact') || ''; } catch (e) {}
+  if (c) return c;
+  var sh = master_().getSheetByName('說明');
+  if (sh) c = String(sh.getRange('B31').getValue() || '').trim();
+  if (c) return c;
+  try { return Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail() || ''; } catch (e2) { return ''; }
 }
 
 function backfillApprover() {
@@ -291,16 +307,19 @@ function backfillApprover() {
     if (!isSchoolName_(name)) continue;
     if (String(list.getRange(r, 5).getValue() || '') === '官方') continue;
     var cur = String(list.getRange(r, 11).getValue() || '').trim();
-    if (cur) continue;
-    var fromCard = cardMap[name];
-    list.getRange(r, 11).setValue(fromCard || label);
+    var curC = String(list.getRange(r, 12).getValue() || '').trim();
+    if (!cur) {
+      var fromCard = cardMap[name];
+      list.getRange(r, 11).setValue(fromCard || label);
+    }
+    if (!curC) list.getRange(r, 12).setValue(gmContact_());
     n++;
   }
-  alert_('已回填 ' + n + ' 列核准GM。');
+  alert_('已回填 ' + n + ' 列核准GM／聯絡方法。');
 }
 
 function ensureSchoolListHeaders_(sh) {
-  var heads = ['學派', '信條', '學派魔法', '特記事項', '來源', '管理人', '學派等級', '狀態', '學派ID', '最後更新', '核准GM'];
+  var heads = ['學派', '信條', '學派魔法', '特記事項', '來源', '管理人', '學派等級', '狀態', '學派ID', '最後更新', '核准GM', '核准GM聯絡方法'];
   sh.getRange(1, 1, 1, heads.length).setValues([heads]);
 }
 
@@ -311,11 +330,12 @@ function listSchools_() {
   var rows = schoolListRows_(sh);
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
-    var row = sh.getRange(r, 1, 1, 11).getValues()[0];
+    var row = sh.getRange(r, 1, 1, 12).getValues()[0];
     var name = String(row[0] || '').trim();
     if (!isSchoolName_(name)) continue;
     if (String(row[7] || '') === '停用') continue;
     var approver = String(row[10] || '').trim();
+    var contact = String(row[11] || '').trim();
     if (!approver && String(row[4] || '') === '自創') {
       approver = String(cardApprover_(name) || '').trim();
     }
@@ -327,13 +347,15 @@ function listSchools_() {
       source: row[4] || '',
       manager: row[5] || '',
       approver: approver,
+      contact: contact,
       學派: name,
       信條: row[1],
       學派魔法: row[2],
       特記事項: row[3],
       來源: row[4],
       管理人: row[5] || '',
-      核准GM: approver
+      核准GM: approver,
+      核准GM聯絡方法: contact
     });
   }
   return out;
@@ -1001,6 +1023,9 @@ function publishOpsRow_(ss, apply, r) {
   if (!String(list.getRange(lr, 11).getValue() || '').trim()) {
     list.getRange(lr, 11).setValue(gmIdentity_());
   }
+  if (!String(list.getRange(lr, 12).getValue() || '').trim()) {
+    list.getRange(lr, 12).setValue(gmContact_());
+  }
 }
 
 function publishFoundingRow_(ss, apply, r) {
@@ -1022,8 +1047,9 @@ function publishFoundingRow_(ss, apply, r) {
   var nextList = nextCustomSchoolRow_(list);
   ensureSchoolListHeaders_(list);
   var gm = gmIdentity_();
-  list.getRange(nextList, 1, 1, 11).setValues([[
-    name, creed, books, notes, '自創', manager, 1, '生效中', sid, now, gm
+  var gmC = gmContact_();
+  list.getRange(nextList, 1, 1, 12).setValues([[
+    name, creed, books, notes, '自創', manager, 1, '生效中', sid, now, gm, gmC
   ]]);
   var card = ss.getSheetByName('學派卡');
   var cr = Math.max(card.getLastRow() + 1, 3);

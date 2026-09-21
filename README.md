@@ -45,10 +45,10 @@ Repo Settings → Pages → Build from **main** / **root** (`/`).
 在**戰役用**自動角卡（不要改公開「請自行複製副本」範本也行，但戰役檔一定要改）的「學派表」A1：
 
 ```
-=QUERY(IMPORTRANGE("1lBDzpsWRfRiL2Bi1wR5jkeDEfZJKPz-loS3m24q0esc","學派表!A1:K200"),"select Col1,Col2,Col3,Col4,Col6,Col11 where Col1 is not null and not Col1 contains '官方 15' and not Col1 starts with '↑'",1)
+=QUERY(IMPORTRANGE("1lBDzpsWRfRiL2Bi1wR5jkeDEfZJKPz-loS3m24q0esc","學派表!A1:L200"),"select Col1,Col2,Col3,Col4,Col6,Col11,Col12 where Col1 is not null and not Col1 contains '官方 15' and not Col1 starts with '↑'",1)
 ```
 
-這會帶入：學派、信條、學派魔法、特記、管理人、核准GM。
+這會帶入：學派、信條、學派魔法、特記、管理人、核准GM、核准GM聯絡方法。
 
 強制更新：刪掉 A1 公式再貼一次，或關閉再開自動角卡。第一次會出現「允許存取」。
 
