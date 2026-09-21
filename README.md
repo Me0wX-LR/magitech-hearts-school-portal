@@ -1,4 +1,4 @@
-# 魔導書大戰　學派統合入口
+# School Application Portal
 
 GitHub Pages 上的支流學派申請入口。玩家不用複製自動角卡。送出後寫入 Google **學派統合列表**；你核准後，自動角卡用 `IMPORTRANGE` 讀取。
 
