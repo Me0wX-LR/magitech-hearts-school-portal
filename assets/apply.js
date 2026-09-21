@@ -106,11 +106,12 @@
     var styles = [].filter.call(document.querySelectorAll(".stylePick"), function (c) { return c.checked; })
       .map(function (c) { return c.value; });
     document.getElementById("styleHidden").value = styles.join("、");
-    document.getElementById("advRule").textContent = advRule(adv);
-    document.getElementById("disRule").textContent = disRule(dis);
+    document.getElementById("advRule").textContent = advRule(document.getElementById("advHidden").value);
+    document.getElementById("disRule").textContent = disRule(document.getElementById("disHidden").value);
   }
 
   function advRule(s) {
+    s = s || "";
     if (s.indexOf("備品：魔素") === 0) return "選一種魔素。這個學派的 PC 開局獲得 1 個。COST 2，最多取兩次（初創只能 1 個特記）。";
     if (s.indexOf("備品：道具") === 0) return "只限所需功績點 2 以下的道具。COST＝該道具功績×3。";
     if (s.indexOf("專業性") === 0) return "一局僅能重骰一次你指定的判定。COST 3。";
@@ -121,6 +122,7 @@
   }
 
   function disRule(s) {
+    s = s || "";
     if (s.indexOf("限制：領域") === 0) return "沒有該領域特技的 PC 視為臨時所屬（不能用學派魔法與優勢）。+1 點。";
     if (s.indexOf("限制：樣式") === 0) return "請勾恰好 2 個允許樣式。+2 點。";
     if (s.indexOf("藏書缺失") === 0) return "這個學派的 PC 無法習得該 COST 種類的泛用魔法。+3 點。";
@@ -208,20 +210,36 @@
     return out;
   }
 
-  function paintMath() {
-    syncToggles();
+  function recapHtml() {
     var a = advCost(), d = disCost(), e = extraCost(), r = remain();
     var fm = byId(val("免費藏書序號"));
     var em = byId(val("追加藏書序號"));
     var bad = issues();
-    var html =
-      "<div><strong>剩餘功績點 " + r + "</strong>　（3 − 優勢 " + a + " ＋ 劣勢 " + d + " − 追加 " + e + "）</div>" +
-      "<div>免費　" + (fm ? "【" + fm.zh + "】" : "尚未選") +
-      (document.getElementById("extraHidden").value === "是" ? "　＋　" + (em ? "【" + em.zh + "】" : "尚未選") : "") + "</div>" +
-      "<div>" + (bad.length ? bad.join("、") : "可以送出") + "</div>";
-    document.getElementById("math").innerHTML = html;
-    document.getElementById("mathMini").innerHTML = html;
-    document.getElementById("send").disabled = bad.length > 0 || !cfg.webAppUrl;
+    function esc(t) { return String(t || "—").replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+    var rows = [
+      ["管理人", val("管理人")],
+      ["學派名", val("學派名")],
+      ["信條", val("信條")],
+      ["誕生背景", val("誕生背景")],
+      ["免費藏書", fm ? "【" + fm.zh + "】 " + fm.id : (val("免費藏書序號") || "尚未選")],
+      ["追加藏書", document.getElementById("extraHidden").value === "是" ? (em ? "【" + em.zh + "】 COST " + e : "尚未選") : "無"],
+      ["優勢", val("優勢") || "不選擇優勢"],
+      ["劣勢", val("劣勢") || "不選擇劣勢"],
+      ["剩餘功績點", r + "　（3 − " + a + " ＋ " + d + " − " + e + "）"]
+    ];
+    var html = rows.map(function (pair) {
+      return "<div><strong>" + pair[0] + "</strong>　" + esc(pair[1]) + "</div>";
+    }).join("");
+    html += "<div style=\"margin-top:8px\">" + (bad.length ? ("尚未可送出：" + bad.join("、")) : "可以送出") + "</div>";
+    return {html: html, bad: bad};
+  }
+
+  function paintMath() {
+    try { syncToggles(); } catch (err) { console.error(err); }
+    var rec = recapHtml();
+    document.getElementById("math").innerHTML = rec.html;
+    document.getElementById("mathMini").innerHTML = rec.html;
+    document.getElementById("send").disabled = rec.bad.length > 0 || !cfg.webAppUrl;
   }
 
   function show() {
@@ -255,13 +273,18 @@
   document.getElementById("prev").onclick = function () { if (step > 0) { step--; show(); } };
   document.getElementById("next").onclick = function () { if (step < labels.length - 1) { step++; show(); } };
   form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
     paintMath();
     var bad = issues();
-    if (bad.length || !cfg.webAppUrl) {
-      ev.preventDefault();
+    if (bad.length) return;
+    if (!cfg.webAppUrl) {
+      banner.innerHTML = '<p class="notice bad">尚未設定 Web App 網址。</p>';
       return;
     }
     form.action = cfg.webAppUrl;
+    form.method = "POST";
+    form.target = "_self";
+    form.submit();
   });
 
   show();

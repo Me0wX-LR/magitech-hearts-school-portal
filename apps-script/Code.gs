@@ -77,6 +77,9 @@ function doGet(e) {
     if (action === 'health') return jsonp_(e, {ok: true, sheet: master_().getName()});
     if (action === 'schools') return jsonp_(e, {ok: true, schools: listSchools_()});
     if (action === 'cards') return jsonp_(e, {ok: true, cards: listCards_()});
+    if (action === 'submit' || e.parameter['學派名'] || e.parameter['管理人']) {
+      return handleSubmit_(e.parameter);
+    }
     return jsonp_(e, {ok: false, error: 'unknown action'});
   } catch (err) {
     return jsonp_(e, {ok: false, error: String(err.message || err)});
@@ -159,28 +162,47 @@ function bookCounts_() {
 }
 
 function doPost(e) {
-  var ret = PORTAL_URL + 'apply.html';
+  return handleSubmit_((e && e.parameter) ? e.parameter : {});
+}
+
+function handleSubmit_(p) {
+  var back = PORTAL_URL;
   try {
-    var p = (e && e.parameter) ? e.parameter : {};
-    if (p['return'] && String(p['return']).indexOf('github.io') >= 0) {
-      ret = String(p['return']);
-    }
+    if (p['return'] && /github\.io/.test(String(p['return']))) back = String(p['return']).split('?')[0];
     var map = {};
     Object.keys(p).forEach(function (k) { map[k] = p[k]; });
-    writeApplicationRow_(map, p.email || p.電子信箱 || '');
-    return htmlRedirect_(ret + (ret.indexOf('?') >= 0 ? '&' : '?') + 'ok=1');
+    var dest = writeApplicationRow_(map, p.email || p.電子信箱 || '');
+    return htmlPage_(
+      '申請已收到',
+      '<p>已寫入 master「申請」第 ' + dest + ' 列。請等 GM 發布後才會出現在名冊。</p>' +
+      '<p><a href="' + escHtml_(back) + '">返回 School Application Portal</a></p>'
+    );
   } catch (err) {
-    return htmlRedirect_(ret + (ret.indexOf('?') >= 0 ? '&' : '?') + 'err=' + encodeURIComponent(String(err.message || err)));
+    var msg = String(err && err.message ? err.message : err);
+    var hint = /permission|not allowed|授權|權限/i.test(msg)
+      ? '<p>請把 Web App 設成：執行身分 <b>我</b>、存取對象 <b>任何人</b>，然後部署「新版本」。</p>'
+      : '';
+    return htmlPage_(
+      '送出失敗',
+      '<p>' + escHtml_(msg) + '</p>' + hint +
+      '<p><a href="' + escHtml_(back) + '">返回入口</a></p>'
+    );
   }
 }
 
-function htmlRedirect_(url) {
-  var safe = String(url).replace(/'/g, '%27');
+function escHtml_(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+function htmlPage_(title, body) {
   return HtmlService.createHtmlOutput(
-    '<!doctype html><meta charset="utf-8"><p>正在返回入口……</p>' +
-    '<script>location.replace(\'' + safe + '\');</script>' +
-    '<p><a href="' + safe.replace(/"/g, '&quot;') + '">若未自動跳轉請點這裡</a></p>'
-  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    '<!doctype html><html lang="zh-Hant"><meta charset="utf-8">' +
+    '<title>' + escHtml_(title) + '</title>' +
+    '<body style="font-family:serif;background:#16110c;color:#f4ecd8;padding:32px;line-height:1.6">' +
+    '<h1 style="color:#d4b06a">' + escHtml_(title) + '</h1>' + body +
+    '</body></html>'
+  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+   .setTitle(title);
 }
 
 function g_(map, title) {
