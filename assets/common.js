@@ -88,12 +88,18 @@
         manager: cell(row, 5),
         approver: cell(row, 10),
         contact: cell(row, 11),
+        level: cell(row, 6),
+        status: cell(row, 7),
+        id: cell(row, 8),
         學派: name,
         信條: cell(row, 1),
         學派魔法: cell(row, 2),
         特記事項: cell(row, 3),
         來源: cell(row, 4),
         管理人: cell(row, 5),
+        學派等級: cell(row, 6),
+        狀態: cell(row, 7),
+        學派ID: cell(row, 8),
         核准GM: cell(row, 10),
         核准GM聯絡方法: cell(row, 11)
       };
@@ -119,12 +125,18 @@
         manager: s.manager || s.管理人 || prev.manager || "",
         approver: s.approver || s.核准GM || prev.approver || "",
         contact: s.contact || s.核准GM聯絡方法 || prev.contact || "",
+        level: s.level || s.學派等級 || prev.level || "",
+        status: s.status || s.狀態 || prev.status || "",
+        id: s.id || s.學派ID || prev.id || "",
         學派: key,
         信條: s.creed || s.信條 || prev.creed || "",
         學派魔法: s.magic || s.學派魔法 || prev.magic || "",
         特記事項: s.note || s.特記事項 || prev.note || "",
         來源: s.source || s.來源 || prev.source || "",
         管理人: s.manager || s.管理人 || prev.manager || "",
+        學派等級: s.level || s.學派等級 || prev.level || "",
+        狀態: s.status || s.狀態 || prev.status || "",
+        學派ID: s.id || s.學派ID || prev.id || "",
         核准GM: s.approver || s.核准GM || prev.approver || "",
         核准GM聯絡方法: s.contact || s.核准GM聯絡方法 || prev.contact || ""
       };
@@ -158,5 +170,92 @@
     });
   }
 
-  w.MH = { jsonp: jsonp, loadSchools: loadSchools, isRealSchool: isRealSchool };
+  function dedupeCards(list) {
+    var byName = {};
+    var order = [];
+    (list || []).forEach(function (c) {
+      if (!c || !c.name || !isRealSchool(c.name)) return;
+      if (!byName[c.name]) order.push(c.name);
+      byName[c.name] = c;
+    });
+    return order.map(function (n) { return byName[n]; });
+  }
+
+  function cardsFromGviz(data) {
+    var table = data && data.table;
+    if (!table || !table.rows) return [];
+    var out = [];
+    table.rows.forEach(function (row) {
+      var id = String(cell(row, 0) || "").trim();
+      var name = String(cell(row, 1) || "").trim();
+      if (!name || !isRealSchool(name)) return;
+      if (id === "學派ID" || /自創學派核准後/.test(id)) return;
+      if (String(cell(row, 19) || "") === "停用") return;
+      out.push({
+        id: id,
+        name: name,
+        manager: cell(row, 2),
+        level: Number(cell(row, 8)) || 1,
+        remain: Number(cell(row, 12)) || 0,
+        books: Number(cell(row, 9)) || 1,
+        maxBooks: Number(cell(row, 10)) || 2,
+        cap: Number(cell(row, 11)) || 3,
+        adv: Number(cell(row, 17)) || 0,
+        dis: Number(cell(row, 18)) || 0,
+        expCount: 0,
+        orgCount: 0
+      });
+    });
+    return dedupeCards(out);
+  }
+
+  function cardsFromSchools(schools) {
+    var out = [];
+    (schools || []).forEach(function (s) {
+      if (!isRealSchool(s)) return;
+      var src = String(s.source || s.來源 || "");
+      if (src === "官方") return;
+      if (src && src !== "自創") return;
+      var name = s.name || s.學派;
+      var level = Number(s.level || s.學派等級) || 1;
+      var note = String(s.note || s.特記事項 || "");
+      var magic = String(s.magic || s.學派魔法 || "");
+      out.push({
+        id: String(s.id || s.學派ID || ""),
+        name: name,
+        manager: s.manager || s.管理人 || "",
+        level: level,
+        remain: 3,
+        books: (magic.match(/【/g) || []).length || 1,
+        maxBooks: level * 2,
+        cap: 3,
+        adv: (note.match(/專業性|備品|獨有|異境大本營|學派特性/g) || []).length,
+        dis: (note.match(/限制：|封建|稀薄|藏書缺失|學派病/g) || []).length,
+        expCount: 0,
+        orgCount: 0
+      });
+    });
+    return dedupeCards(out);
+  }
+
+  function loadCards() {
+    var cfg = w.MH_CONFIG || {};
+    return gviz("學派卡").then(cardsFromGviz).catch(function () { return []; }).then(function (sheetCards) {
+      if (sheetCards.length) return sheetCards;
+      var appP = cfg.webAppUrl
+        ? jsonp(cfg.webAppUrl + "?action=cards").then(function (data) {
+          if (data && data.ok === false) return [];
+          return dedupeCards((data && data.cards) || []);
+        }).catch(function () { return []; })
+        : Promise.resolve([]);
+      return appP.then(function (appCards) {
+        if (appCards.length) return appCards;
+        return loadSchools().then(function (data) {
+          return cardsFromSchools((data && data.schools) || []);
+        });
+      });
+    });
+  }
+
+  w.MH = { jsonp: jsonp, loadSchools: loadSchools, loadCards: loadCards, isRealSchool: isRealSchool };
 })(window);

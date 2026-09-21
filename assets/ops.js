@@ -19,17 +19,14 @@
     fillMagic();
   });
 
-  if (cfg.webAppUrl) {
-    MH.jsonp(cfg.webAppUrl + "?action=cards").then(function (data) {
-      cards = (data && data.cards) || [];
-      fillSchools();
-      paint();
-    }).catch(function () {
-      document.getElementById("statusBox").textContent = "讀不到已核准學派。請確認 Web App 已重新部署。";
-    });
-  } else {
-    document.getElementById("statusBox").textContent = "尚未設定 Web App。";
-  }
+  MH.loadCards().then(function (list) {
+    cards = list || [];
+    fillSchools();
+    paint();
+  }).catch(function () {
+    document.getElementById("statusBox").textContent = "讀不到已核准學派。請硬重新整理（Ctrl+F5）。";
+    document.getElementById("schoolPick").innerHTML = '<option value="">讀取失敗</option>';
+  });
 
   function fillSchools() {
     var sel = document.getElementById("schoolPick");
@@ -40,6 +37,7 @@
     sel.innerHTML = '<option value="">請選擇</option>' + cards.map(function (c, i) {
       return '<option value="' + i + '">' + c.name + "　Lv." + c.level + "　剩餘" + c.remain + "</option>";
     }).join("");
+    if (cards.length === 1) sel.value = "0";
   }
 
   function current() {

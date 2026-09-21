@@ -376,29 +376,32 @@ function listCards_() {
   if (last < 3) return [];
   var values = sh.getRange(3, 1, last - 2, 20).getValues();
   var books = bookCounts_();
-  var out = [];
+  var byName = {};
+  var order = [];
   for (var i = 0; i < values.length; i++) {
     var name = String(values[i][1] || '').trim();
-    if (!name) continue;
+    if (!isSchoolName_(name)) continue;
     if (String(values[i][19]) === '停用') continue;
     var sid = String(values[i][0] || '');
     var bc = books[sid] || {n: 0, exp: 0, org: 0};
-    out.push({
+    var card = {
       id: sid,
       name: name,
       manager: values[i][2],
       level: Number(values[i][8]) || 1,
       remain: Number(values[i][12]) || 0,
-      books: bc.n,
+      books: bc.n || Number(values[i][9]) || 1,
       maxBooks: Number(values[i][10]) || 2,
       cap: Number(values[i][11]) || 3,
       adv: Number(values[i][17]) || 0,
       dis: Number(values[i][18]) || 0,
       expCount: bc.exp,
       orgCount: bc.org
-    });
+    };
+    if (!byName[name]) order.push(name);
+    byName[name] = card;
   }
-  return out;
+  return order.map(function (n) { return byName[n]; });
 }
 
 function bookCounts_() {
