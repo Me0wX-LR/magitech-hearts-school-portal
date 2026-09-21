@@ -61,6 +61,12 @@
     out.textContent = m ? (m.cat + "　COST " + (m.cost == null ? "—" : m.cost)) : "";
   }
 
+  function optionKey(selectId) {
+    var sel = document.getElementById(selectId);
+    var opt = sel && sel.options[sel.selectedIndex];
+    return (opt && opt.getAttribute("data-key")) || "";
+  }
+
   function val(name) {
     var el = form.elements[name];
     if (!el) return "";
@@ -89,13 +95,13 @@
       document.getElementById("extraPick").value = "";
       document.getElementById("extraId").value = "";
     }
-    var adv = document.getElementById("advHidden").value;
-    [].forEach.call(document.querySelectorAll("[data-adv]"), function (el) {
-      el.hidden = el.getAttribute("data-adv") !== adv;
-    });
-    var dis = document.getElementById("disHidden").value;
-    [].forEach.call(document.querySelectorAll("[data-dis]"), function (el) {
-      el.hidden = el.getAttribute("data-dis") !== dis;
+    var advKey = optionKey("advPick");
+    var disKey = optionKey("disPick");
+    if (!document.getElementById("wantAdv").checked) advKey = "";
+    if (!document.getElementById("wantDis").checked) disKey = "";
+    [].forEach.call(document.querySelectorAll(".reveal[data-for]"), function (el) {
+      var key = el.getAttribute("data-for");
+      el.classList.toggle("open", key === advKey || key === disKey);
     });
     var styles = [].filter.call(document.querySelectorAll(".stylePick"), function (c) { return c.checked; })
       .map(function (c) { return c.value; });

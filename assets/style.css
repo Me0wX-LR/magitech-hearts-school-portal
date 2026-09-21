@@ -154,7 +154,9 @@ label.check {
   cursor: pointer;
 }
 label.check input { width: auto; margin-top: 4px; }
-.reveal { margin: 8px 0 12px; }
+.reveal { display: none !important; margin: 8px 0 12px; }
+.reveal.open { display: block !important; }
+[hidden] { display: none !important; }
 .math.sticky {
   margin: 0 0 16px;
   position: sticky;

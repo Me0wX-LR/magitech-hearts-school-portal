@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>申請｜School Application Portal</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/style.css?v=2">
 </head>
 <body>
   <div class="wrap">
@@ -95,25 +95,25 @@
           <label>優勢種類</label>
           <select id="advPick">
             <option value="">請選擇</option>
-            <option value="備品：魔素（COST 2）">備品：魔素（COST 2）— 開局獲得 1 個指定魔素</option>
-            <option value="備品：道具（COST＝道具功績點×3）">備品：道具（COST＝功績×3）— 開局獲得 1 個 2 點以下道具</option>
-            <option value="專業性（COST 3）">專業性（COST 3）— 一局可重骰一次指定判定</option>
-            <option value="獨有的魔法體系（COST 5）">獨有的魔法體系（COST 5）— 咒文或召喚可耗魔力加值</option>
-            <option value="異境大本營（COST 5）">異境大本營（COST 5）— 無視一種世界法則阻礙</option>
-            <option value="學派特性（COST＝預兆COST×5）">學派特性（COST＝預兆×5）— 全學派可做一項特殊成長</option>
+            <option value="備品：魔素（COST 2）" data-key="mana">備品：魔素（COST 2）— 開局獲得 1 個指定魔素</option>
+            <option value="備品：道具（COST＝道具功績點×3）" data-key="item">備品：道具（COST＝功績×3）— 開局獲得 1 個 2 點以下道具</option>
+            <option value="專業性（COST 3）" data-key="pro">專業性（COST 3）— 一局可重骰一次指定判定</option>
+            <option value="獨有的魔法體系（COST 5）" data-key="unique">獨有的魔法體系（COST 5）— 咒文或召喚可耗魔力加值</option>
+            <option value="異境大本營（COST 5）" data-key="base">異境大本營（COST 5）— 無視一種世界法則阻礙</option>
+            <option value="學派特性（COST＝預兆COST×5）" data-key="omen">學派特性（COST＝預兆×5）— 全學派可做一項特殊成長</option>
           </select>
           <p class="hint" id="advRule"></p>
-          <div class="reveal" data-adv="備品：魔素（COST 2）">
+          <div class="reveal" data-for="mana">
             <label>魔素種類</label>
             <select name="備品魔素"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option></select>
           </div>
-          <div class="reveal" data-adv="備品：道具（COST＝道具功績點×3）">
+          <div class="reveal" data-for="item">
             <label>道具名</label>
             <input name="備品道具名">
             <label>該道具所需功績點</label>
             <select name="備品道具功績點"><option></option><option>1</option><option>2</option></select>
           </div>
-          <div class="reveal" data-adv="專業性（COST 3）">
+          <div class="reveal" data-for="pro">
             <label>可重骰的判定（一局一次）</label>
             <select name="專業性判定">
               <option></option>
@@ -121,11 +121,11 @@
               <option>為使用咒文的指定特技判定</option><option>抵抗判定</option>
             </select>
           </div>
-          <div class="reveal" data-adv="獨有的魔法體系（COST 5）">
+          <div class="reveal" data-for="unique">
             <label>體系</label>
             <select name="獨有體系"><option></option><option>咒文</option><option>召喚</option></select>
           </div>
-          <div class="reveal" data-adv="異境大本營（COST 5）">
+          <div class="reveal" data-for="base">
             <label>無視哪一種世界法則</label>
             <select name="世界法則阻礙">
               <option></option>
@@ -133,7 +133,7 @@
               <option>復活阻礙</option><option>介入阻礙</option>
             </select>
           </div>
-          <div class="reveal" data-adv="學派特性（COST＝預兆COST×5）">
+          <div class="reveal" data-for="omen">
             <label>預兆</label>
             <select name="學派特性預兆">
               <option></option>
@@ -151,29 +151,29 @@
           <label>劣勢種類</label>
           <select id="disPick">
             <option value="">請選擇</option>
-            <option value="限制：領域（COST 1）">限制：領域（+1）— 沒學該領域特技則臨時所屬</option>
-            <option value="限制：樣式（COST 2）">限制：樣式（+2）— 勾 2 個允許的樣式</option>
-            <option value="藏書缺失（COST 3）">藏書缺失（+3）— 不能學對應 COST 的泛用魔法</option>
-            <option value="封建（COST 3）">封建（+3）— 結束階段功績點少 1</option>
-            <option value="稀薄（COST 4）">稀薄（+4）— 魔力最大值多骰一顆取低</option>
-            <option value="學派病（COST＝病強度）">學派病（+強度）— 該病成痼疾且不能靠它拿功績</option>
+            <option value="限制：領域（COST 1）" data-key="domain">限制：領域（+1）— 沒學該領域特技則臨時所屬</option>
+            <option value="限制：樣式（COST 2）" data-key="style">限制：樣式（+2）— 勾 2 個允許的樣式</option>
+            <option value="藏書缺失（COST 3）" data-key="missing">藏書缺失（+3）— 不能學對應 COST 的泛用魔法</option>
+            <option value="封建（COST 3）" data-key="feudal">封建（+3）— 結束階段功績點少 1</option>
+            <option value="稀薄（COST 4）" data-key="thin">稀薄（+4）— 魔力最大值多骰一顆取低</option>
+            <option value="學派病（COST＝病強度）" data-key="disease">學派病（+強度）— 該病成痼疾且不能靠它拿功績</option>
           </select>
           <p class="hint" id="disRule"></p>
-          <div class="reveal" data-dis="限制：領域（COST 1）">
+          <div class="reveal" data-for="domain">
             <label>必須習得特技的領域</label>
             <select name="限制領域"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option></select>
           </div>
-          <div class="reveal" data-dis="限制：樣式（COST 2）">
-            <p class="rule">勾 2 個允許的樣式。PC 沒有其中之一就是臨時所屬。</p>
+          <div class="reveal" data-for="style">
+            <p class="rule">勾恰好 2 個允許的樣式。PC 沒有其中之一就是臨時所屬。</p>
             <label class="check"><input type="checkbox" class="stylePick" value="學究"> 學究</label>
             <label class="check"><input type="checkbox" class="stylePick" value="世俗"> 世俗</label>
             <label class="check"><input type="checkbox" class="stylePick" value="理想"> 理想</label>
           </div>
-          <div class="reveal" data-dis="藏書缺失（COST 3）">
+          <div class="reveal" data-for="missing">
             <label>無法習得的泛用 COST 種類</label>
             <select name="藏書缺失種類"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option><option>全</option><option>無</option></select>
           </div>
-          <div class="reveal" data-dis="學派病（COST＝病強度）">
+          <div class="reveal" data-for="disease">
             <label>病名</label>
             <input name="學派病名稱">
             <label>強度（正整數＝加回的點數）</label>
@@ -199,8 +199,8 @@
     </form>
     <footer>COST 即時試算；master 會再驗一次。</footer>
   </div>
-  <script src="assets/config.js"></script>
-  <script src="assets/common.js"></script>
-  <script src="assets/apply.js"></script>
+  <script src="assets/config.js?v=2"></script>
+  <script src="assets/common.js?v=2"></script>
+  <script src="assets/apply.js?v=2"></script>
 </body>
 </html>
