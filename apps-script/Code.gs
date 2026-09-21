@@ -20,7 +20,7 @@ function master_() {
 function onOpen() {
   SpreadsheetApp.getActive().addMenu('學派統合', [
     {name: '健康檢查', functionName: 'healthCheck'},
-    {name: '複製驗算公式', functionName: 'fillFormulas'},
+    {name: '重新驗算申請列', functionName: 'fillFormulas'},
     {name: '發布目前選取的一列', functionName: 'publishSelected'},
     {name: '發布所有待審的初創申請', functionName: 'publishApproved'},
     {name: '發布所有待審的運營申請', functionName: 'publishOps'},
@@ -335,8 +335,160 @@ function writeApplicationRow_(map, email) {
   }
   var dest = Math.max(last + 1, 3);
   sh.getRange(dest, 1, 1, row.length).setValues([row]);
-  sh.getRange('AL2:AW2').copyTo(sh.getRange(dest, 38, 1, 12), {contentsOnly: false});
+  scoreRow_(sh, dest);
   return dest;
+}
+
+function lookupMagic_(id) {
+  var n = Number(id);
+  if (!n) return null;
+  var dir = master_().getSheetByName('魔法目錄');
+  if (!dir) return null;
+  var last = dir.getLastRow();
+  if (last < 2) return null;
+  var data = dir.getRange(2, 1, last - 1, 12).getValues();
+  for (var i = 0; i < data.length; i++) {
+    if (Number(data[i][0]) === n) {
+      return {
+        id: n,
+        zh: String(data[i][2] || ''),
+        cost: Number(data[i][6] || 0),
+        cat: String(data[i][9] || ''),
+        free: String(data[i][10] || '') === '是'
+      };
+    }
+  }
+  return null;
+}
+
+function cell_(sh, r, name) {
+  try {
+    return sh.getRange(r, col_(sh, name)).getValue();
+  } catch (e) {
+    return '';
+  }
+}
+
+function setCell_(sh, r, name, value) {
+  sh.getRange(r, col_(sh, name)).setValue(value);
+}
+
+function advCostFrom_(adv, itemPts, omen, skill, uniq, world) {
+  var s = String(adv || '');
+  if (!s || s === '不選擇優勢') return 0;
+  if (s.indexOf('備品：魔素') === 0) return 2;
+  if (s.indexOf('備品：道具') === 0) {
+    var n = Number(itemPts);
+    return n ? n * 3 : 99;
+  }
+  if (s.indexOf('專業性') === 0) return skill ? 3 : 99;
+  if (s.indexOf('獨有的魔法體系') === 0) return uniq ? 5 : 99;
+  if (s.indexOf('異境大本營') === 0) return world ? 5 : 99;
+  if (s.indexOf('學派特性') === 0) {
+    var z = String(omen || '');
+    if (/臨床|惡食/.test(z)) return 5;
+    if (/異境血脈|復仇心/.test(z)) return 10;
+    if (/古老魔法/.test(z)) return 15;
+    return 99;
+  }
+  return 99;
+}
+
+function disCostFrom_(dis, domain, styles, missing, diseaseName, diseaseN) {
+  var s = String(dis || '');
+  if (!s || s === '不選擇劣勢') return 0;
+  if (s.indexOf('限制：領域') === 0) return domain ? 1 : 99;
+  if (s.indexOf('限制：樣式') === 0) {
+    var n = String(styles || '').split(/[、,，]/).filter(Boolean).length;
+    return n === 2 ? 2 : 99;
+  }
+  if (s.indexOf('藏書缺失') === 0) return missing ? 3 : 99;
+  if (s.indexOf('封建') === 0) return 3;
+  if (s.indexOf('稀薄') === 0) return 4;
+  if (s.indexOf('學派病') === 0) {
+    var d = Number(diseaseN);
+    return d > 0 && diseaseName ? d : 99;
+  }
+  return 99;
+}
+
+function extraCostFrom_(want, cat, freeCat, extraId) {
+  if (String(want) !== '是') return 0;
+  cat = String(cat || '');
+  if (cat === '經歷魔法') return 3 + (freeCat === '經歷魔法' ? 1 : 0);
+  if (cat === '機關魔法') return 4 + (freeCat === '機關魔法' ? 1 : 0);
+  if (cat === '學派魔法') return 3;
+  if (cat === '餐飲魔法' || cat === '醫療魔法') return 2;
+  if (cat.indexOf('遺失') === 0) {
+    var m = lookupMagic_(extraId);
+    return m ? 2 + Number(m.cost || 0) : 99;
+  }
+  return 99;
+}
+
+function scoreRow_(sh, r) {
+  ensureGmColumn_(sh);
+  var type = String(cell_(sh, r, '申請類型') || '');
+  var frozen = gmStatus_(sh, r);
+  var ts = cell_(sh, r, '時間戳記');
+  var id = Utilities.formatDate(ts instanceof Date ? ts : new Date(), Session.getScriptTimeZone() || 'Asia/Taipei', 'yyyyMMdd-HHmmss') + '-' + ('00' + (r - 1)).slice(-3);
+  var name = String(cell_(sh, r, '學派名') || '').trim();
+  var list = master_().getSheetByName('學派表');
+  var dup = false;
+  if (name && list) {
+    var names = list.getRange('A2:A').getValues();
+    for (var i = 0; i < names.length; i++) {
+      if (String(names[i][0]) === name) dup = true;
+    }
+  }
+
+  var advC = advCostFrom_(cell_(sh, r, '優勢'), cell_(sh, r, '備品道具功績點'), cell_(sh, r, '學派特性預兆'), cell_(sh, r, '專業性判定'), cell_(sh, r, '獨有體系'), cell_(sh, r, '世界法則阻礙'));
+  var disC = disCostFrom_(cell_(sh, r, '劣勢'), cell_(sh, r, '限制領域'), cell_(sh, r, '限制樣式'), cell_(sh, r, '藏書缺失種類'), cell_(sh, r, '學派病名稱'), cell_(sh, r, '學派病強度'));
+  var extraC = extraCostFrom_(cell_(sh, r, '是否追加第二本'), cell_(sh, r, '追加藏書分類'), cell_(sh, r, '免費藏書分類'), cell_(sh, r, '追加藏書序號'));
+  var remain = type === '學派初創' ? 3 - Number(advC) + Number(disC) - Number(extraC) : '—';
+
+  var freeM = lookupMagic_(cell_(sh, r, '免費藏書序號'));
+  var extraM = lookupMagic_(cell_(sh, r, '追加藏書序號'));
+  var freeName = freeM ? ('【' + freeM.zh + '】') : (cell_(sh, r, '免費藏書序號') ? '序號無效' : '');
+  var extraName = extraM ? ('【' + extraM.zh + '】') : '';
+  var books = [freeName, String(cell_(sh, r, '是否追加第二本')) === '是' ? extraName : ''].filter(Boolean).join('\n');
+  var traits = [cell_(sh, r, '優勢'), cell_(sh, r, '劣勢')].filter(function (x) {
+    return x && String(x) !== '不選擇優勢' && String(x) !== '不選擇劣勢';
+  }).join('\n');
+
+  var msg = '通過';
+  if (type !== '學派初創') msg = '待人工（非初創）';
+  else if (!name) msg = '缺學派名';
+  else if (!cell_(sh, r, '信條')) msg = '缺信條';
+  else if (dup) msg = '學派名重複';
+  else if (!cell_(sh, r, '免費藏書序號')) msg = '缺免費藏書序號';
+  else if (!freeM) msg = '免費藏書序號無效';
+  else if (!freeM.free) msg = '免費藏書不在初創允許範圍';
+  else if (cell_(sh, r, '免費藏書分類') && freeM.cat !== String(cell_(sh, r, '免費藏書分類'))) msg = '免費藏書分類與序號不符';
+  else if (advC === 99) msg = '優勢參數不足';
+  else if (disC === 99) msg = '劣勢參數不足';
+  else if (extraC === 99) msg = '追加藏書無法計價';
+  else if (typeof remain === 'number' && remain < 0) msg = '剩餘功績點為負';
+  else if (String(cell_(sh, r, '是否追加第二本')) === '是' && extraM && freeM && extraM.id === freeM.id) msg = '兩本藏書序號相同';
+
+  var verdict = (msg === '通過' || msg === '待人工（非初創）') ? '待審核' : '驗證失敗';
+  if (isFrozenStatus_(frozen)) {
+    verdict = frozen === '已發布' ? '已發布' : '退回';
+  }
+
+  setCell_(sh, r, '申請ID', id);
+  setCell_(sh, r, '驗證結果', verdict);
+  setCell_(sh, r, '驗證訊息', msg);
+  setCell_(sh, r, '優勢COST', advC);
+  setCell_(sh, r, '劣勢COST', disC);
+  setCell_(sh, r, '追加藏書COST', extraC);
+  setCell_(sh, r, '剩餘功績點', remain);
+  setCell_(sh, r, '免費藏書名', freeName);
+  setCell_(sh, r, '追加藏書名', extraName);
+  setCell_(sh, r, '特記顯示草稿', traits);
+  setCell_(sh, r, '藏書顯示草稿', books);
+  setCell_(sh, r, '重名', dup ? '是' : '否');
+  return msg;
 }
 
 function testDummyApplication() {
@@ -361,21 +513,14 @@ function fillFormulas() {
   var last = sh.getLastRow();
   if (last < 3) { alert_('尚無需要填滿的列。'); return; }
   ensureGmColumn_(sh);
-  var cStatus = col_(sh, '驗證結果');
-  var cGm = col_(sh, 'GM決定');
-  var frozen = [];
+  var ok = 0, fail = 0;
   for (var r = 3; r <= last; r++) {
-    frozen.push({
-      am: sh.getRange(r, cStatus).getValue(),
-      gm: sh.getRange(r, cGm).getValue()
-    });
+    if (!cell_(sh, r, '時間戳記') && !cell_(sh, r, '學派名')) continue;
+    var msg = scoreRow_(sh, r);
+    if (msg === '通過' || msg === '待人工（非初創）') ok++;
+    else fail++;
   }
-  sh.getRange('AL2:AW2').copyTo(sh.getRange('AL3:AW' + last), {contentsOnly: false});
-  for (var i = 0; i < frozen.length; i++) {
-    var st = String(frozen[i].am || '').trim();
-    if (isFrozenStatus_(st)) sh.getRange(3 + i, cStatus).setValue(st);
-    if (frozen[i].gm) sh.getRange(3 + i, cGm).setValue(frozen[i].gm);
-  }
+  alert_('已重新驗算。通過／待人工 ' + ok + ' 筆，驗證失敗 ' + fail + ' 筆。#ERROR 的剩餘功績點與驗證訊息已改成數值。');
 }
 
 function ensureGmColumn_(sh) {
@@ -440,6 +585,9 @@ function publishApproved() {
     var status = gmStatus_(apply, r);
     if (isFrozenStatus_(status) && status !== '已發布') { rejected++; continue; }
     if (status === '已發布') { skipped++; continue; }
+    scoreRow_(apply, r);
+    status = gmStatus_(apply, r);
+    if (isFrozenStatus_(status) && status !== '已發布') { rejected++; continue; }
     if (status !== '待審核') { skipped++; continue; }
     var type = String(apply.getRange(r, col_(apply, '申請類型')).getValue());
     var msg = String(apply.getRange(r, col_(apply, '驗證訊息')).getValue());
@@ -464,10 +612,16 @@ function publishSelected() {
     r = apply.getActiveCell().getRow();
   }
   if (r < 3) { alert_('請先點「申請」工作表裡要發布的那一列。'); return; }
+  scoreRow_(apply, r);
   var status = gmStatus_(apply, r);
   if (status === '已發布') { alert_('這一列已經發布過。'); return; }
   if (isFrozenStatus_(status)) { alert_('這一列已退回，不會發布。'); return; }
   var type = String(apply.getRange(r, col_(apply, '申請類型')).getValue());
+  var msg = String(apply.getRange(r, col_(apply, '驗證訊息')).getValue());
+  if (type === '學派初創' && msg !== '通過') {
+    alert_('這一列驗證未通過：' + msg);
+    return;
+  }
   try {
     if (type === '學派初創') publishFoundingRow_(ss, apply, r);
     else publishOpsRow_(ss, apply, r);
