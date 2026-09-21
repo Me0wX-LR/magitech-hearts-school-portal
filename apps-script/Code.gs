@@ -368,6 +368,25 @@ function writeApplicationRow_(map, email) {
   return dest;
 }
 
+function catFromId_(n) {
+  n = Number(n);
+  if ((n >= 1001 && n <= 1312) || (n >= 6019 && n <= 6048) || (n >= 7001 && n <= 7054)) return '泛用魔法';
+  if ((n >= 2001 && n <= 2512) || (n >= 7055 && n <= 7072)) return '經歷魔法';
+  if ((n >= 3001 && n <= 3506) || (n >= 6049 && n <= 6066)) return '機關魔法';
+  if ((n >= 5001 && n <= 5018) || (n >= 6085 && n <= 6102) || (n >= 7082 && n <= 7087)) return '學派魔法';
+  if (n >= 7106 && n <= 7111) return '醫療魔法';
+  if (n >= 7112 && n <= 7117) return '餐飲魔法';
+  if ((n >= 6103 && n <= 6117) || (n >= 7088 && n <= 7105)) return '遺失魔法';
+  if ((n >= 4001 && n <= 4030) || (n >= 6067 && n <= 6084)) return '禁書魔法';
+  if ((n >= 6001 && n <= 6018) || (n >= 7073 && n <= 7081)) return '種族魔法';
+  return '其他';
+}
+
+function isFoundingFree_(n) {
+  var cat = catFromId_(n);
+  return cat === '泛用魔法' || cat === '經歷魔法' || cat === '機關魔法' || cat === '學派魔法' || cat === '醫療魔法' || cat === '餐飲魔法';
+}
+
 function lookupMagic_(id) {
   var n = Number(id);
   if (!n) return null;
@@ -378,12 +397,13 @@ function lookupMagic_(id) {
   var data = dir.getRange(2, 1, last - 1, 12).getValues();
   for (var i = 0; i < data.length; i++) {
     if (Number(data[i][0]) === n) {
+      var cat = catFromId_(n);
       return {
         id: n,
         zh: String(data[i][2] || ''),
         cost: Number(data[i][6] || 0),
-        cat: String(data[i][9] || ''),
-        free: String(data[i][10] || '') === '是'
+        cat: cat,
+        free: isFoundingFree_(n)
       };
     }
   }
@@ -446,7 +466,7 @@ function extraCostFrom_(want, cat, freeCat, extraId) {
   cat = String(cat || '');
   if (cat === '經歷魔法') return 3 + (freeCat === '經歷魔法' ? 1 : 0);
   if (cat === '機關魔法') return 4 + (freeCat === '機關魔法' ? 1 : 0);
-  if (cat === '學派魔法') return 3;
+  if (cat === '學派魔法' || cat === '泛用魔法' || cat === '禁書魔法' || cat === '種族魔法') return 3;
   if (cat === '餐飲魔法' || cat === '醫療魔法') return 2;
   if (cat.indexOf('遺失') === 0) {
     var m = lookupMagic_(extraId);
@@ -718,7 +738,7 @@ function levelUpCost_(level) {
 function extraBookCost_(cat, expCount, orgCount, mid) {
   if (cat === '經歷魔法') return 3 + Number(expCount || 0);
   if (cat === '機關魔法') return 4 + Number(orgCount || 0);
-  if (cat === '學派魔法') return 3;
+  if (cat === '學派魔法' || cat === '泛用魔法' || cat === '禁書魔法' || cat === '種族魔法') return 3;
   if (cat === '餐飲魔法' || cat === '醫療魔法') return 2;
   if (String(cat).indexOf('遺失') >= 0) {
     var dir = master_().getSheetByName('魔法目錄');

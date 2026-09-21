@@ -6,8 +6,8 @@
   var stepsEl = document.getElementById("steps");
   var labels = ["申請人", "學派", "藏書", "特記", "確認"];
   var cfg = window.MH_CONFIG || {};
-  var CATS_FREE = ["經歷魔法", "機關魔法", "學派魔法", "餐飲魔法", "醫療魔法"];
-  var CATS_EXTRA = CATS_FREE.concat(["遺失魔法"]);
+  var CATS_FREE = ["泛用魔法", "經歷魔法", "機關魔法", "學派魔法", "餐飲魔法", "醫療魔法"];
+  var CATS_EXTRA = CATS_FREE.concat(["遺失魔法", "禁書魔法", "種族魔法"]);
 
   var params = new URLSearchParams(location.search);
   var banner = document.getElementById("banner");

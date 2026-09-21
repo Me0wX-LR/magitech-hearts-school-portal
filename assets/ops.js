@@ -4,7 +4,7 @@
   var cards = [];
   var form = document.getElementById("form");
   var UP = {1: 10, 2: 20, 3: 30, 4: 50};
-  var CATS = ["經歷魔法", "機關魔法", "學派魔法", "餐飲魔法", "醫療魔法", "遺失魔法"];
+  var CATS = ["泛用魔法", "經歷魔法", "機關魔法", "學派魔法", "餐飲魔法", "醫療魔法", "遺失魔法", "禁書魔法", "種族魔法"];
 
   document.getElementById("returnField").value = location.href.split("?")[0];
   var banner = document.getElementById("banner");
@@ -96,7 +96,7 @@
     var orgCount = (school && school.orgCount) || 0;
     if (p === "經歷魔法") return 3 + expCount;
     if (p === "機關魔法") return 4 + orgCount;
-    if (p === "學派魔法") return 3;
+    if (p === "學派魔法" || p === "泛用魔法" || p === "禁書魔法" || p === "種族魔法") return 3;
     if (p === "餐飲魔法" || p === "醫療魔法") return 2;
     if (p === "遺失魔法") {
       var m = byId(document.getElementById("extraPick").value);

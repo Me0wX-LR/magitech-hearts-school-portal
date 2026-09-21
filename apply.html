@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>申請｜School Application Portal</title>
-  <link rel="stylesheet" href="assets/style.css?v=4">
+  <link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
   <div class="wrap">
@@ -71,7 +71,7 @@
       </section>
 
       <section class="panel" data-step="2">
-        <p class="rule">初創免費 1 本學派魔法。限經歷（基本）／機關（基本・黃昏）／學派（基本・黃昏）／餐飲／醫療。不可用遺失魔法當免費本。</p>
+        <p class="rule">初創免費 1 本。分類看魔法本身（泛用／經歷／機關／學派／餐飲／醫療）。黃昏、蒐集只是來源包，同一類都可選。遺失／禁書／種族只能追加。</p>
         <label>免費藏書分類</label>
         <select name="免費藏書分類" id="freeCat"></select>
         <label>選擇魔法</label>
@@ -79,7 +79,7 @@
         <p class="hint" id="freeHint"></p>
         <label class="check"><input type="checkbox" id="wantExtra"> 追加第二本（花費功績點；最大藏書數＝2）</label>
         <div id="extraBox" hidden>
-          <p class="rule">經歷 COST＝3＋現有經歷數；機關＝4＋現有機關數；學派＝3；餐飲／醫療＝2；遺失＝2＋該魔法 COST。</p>
+          <p class="rule">經歷 COST＝3＋現有經歷數；機關＝4＋現有機關數；學派／泛用／禁書／種族＝3；餐飲／醫療＝2；遺失＝2＋該魔法 COST。</p>
           <label>追加藏書分類</label>
           <select name="追加藏書分類" id="extraCat"></select>
           <label>選擇魔法</label>
@@ -199,8 +199,8 @@
     </form>
     <footer>COST 即時試算；master 會再驗一次。</footer>
   </div>
-  <script src="assets/config.js?v=4"></script>
-  <script src="assets/common.js?v=4"></script>
-  <script src="assets/apply.js?v=4"></script>
+  <script src="assets/config.js?v=5"></script>
+  <script src="assets/common.js?v=5"></script>
+  <script src="assets/apply.js?v=5"></script>
 </body>
 </html>
