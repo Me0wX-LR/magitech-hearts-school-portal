@@ -20,12 +20,56 @@ function master_() {
 function onOpen() {
   SpreadsheetApp.getActive().addMenu('學派統合', [
     {name: '健康檢查', functionName: 'healthCheck'},
+    {name: '重整魔法目錄分類', functionName: 'rebuildMagicCatalog'},
     {name: '重新驗算申請列', functionName: 'fillFormulas'},
     {name: '發布目前選取的一列', functionName: 'publishSelected'},
     {name: '發布所有待審的初創申請', functionName: 'publishApproved'},
     {name: '發布所有待審的運營申請', functionName: 'publishOps'},
     {name: '重整審核表', functionName: 'rebuildReviewTab'}
   ]);
+  try { maybeFixMagicCatalog_(); } catch (e) { Logger.log(e); }
+}
+
+function maybeFixMagicCatalog_() {
+  var sh = master_().getSheetByName('魔法目錄');
+  if (!sh) return;
+  var last = sh.getLastRow();
+  if (last < 2) return;
+  var data = sh.getRange(2, 1, Math.min(last - 1, 800), 10).getValues();
+  for (var i = 0; i < data.length; i++) {
+    var n = Number(data[i][0]);
+    if (!n) continue;
+    if (String(data[i][9] || '') !== catFromId_(n)) {
+      rebuildMagicCatalog_(true);
+      return;
+    }
+  }
+}
+
+function rebuildMagicCatalog() {
+  rebuildMagicCatalog_(false);
+}
+
+function rebuildMagicCatalog_(silent) {
+  var sh = master_().getSheetByName('魔法目錄');
+  if (!sh) throw new Error('沒有魔法目錄');
+  var last = sh.getLastRow();
+  var ids = sh.getRange(2, 1, last - 1, 1).getValues();
+  var out = [];
+  for (var i = 0; i < ids.length; i++) {
+    var n = Number(ids[i][0]);
+    var cat = n ? catFromId_(n) : '';
+    out.push([cat, n && isFoundingFree_(n) ? '是' : '否', n ? '是' : '']);
+  }
+  sh.getRange(2, 10, out.length, 3).setValues(out);
+  var opt = master_().getSheetByName('規則選項');
+  if (opt) {
+    var cats = ['泛用魔法', '經歷魔法', '機關魔法', '學派魔法', '餐飲魔法', '醫療魔法', '遺失魔法', '禁書魔法', '種族魔法'];
+    opt.getRange('D1').setValue('免費／追加藏書分類');
+    opt.getRange('D2:D30').clearContent();
+    opt.getRange(2, 4, cats.length, 1).setValues(cats.map(function (c) { return [c]; }));
+  }
+  if (!silent) alert_('已更新「魔法目錄」藏書分類 ' + out.length + ' 筆。蒐集／黃昏只當來源包，分類與新約相同。');
 }
 
 function alert_(msg) {
