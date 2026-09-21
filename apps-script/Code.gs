@@ -33,21 +33,77 @@ function alert_(msg) {
   catch (e) { Logger.log(msg); }
 }
 
+function reviewQuery_() {
+  return '=QUERY(申請!A3:AW500,"select Col38,Col1,Col3,Col4,Col7,Col8,Col48,Col47,Col44,Col40 where Col1 is not null",0)';
+}
+
 function rebuildReviewTab() {
   var ss = master_();
   var sh = ss.getSheetByName('審核');
   if (!sh) throw new Error('沒有「審核」工作表');
-  sh.getRange('A5:Z500').clearContent();
+  sh.getRange('A5:J500').clearContent();
+  sh.getRange('A2').setValue('A–J 是自動列表，不要在裡面打字。退回／發布請用 K 欄。');
   sh.getRange('A4:K4').setValues([[
     '申請ID', '時間', '申請類型', '管理人', '學派名', '信條',
-    '藏書顯示草稿', '特記顯示草稿', '剩餘功績點', '驗證訊息', '驗證結果'
+    '藏書顯示草稿', '特記顯示草稿', '剩餘功績點', '驗證訊息', '動作'
   ]]);
-  // QUERY uses Col numbers so it survives zh-TW separators. No IFERROR — empty 申請 should look empty, errors should be visible.
-  sh.getRange('A5').setFormula(
-    '=QUERY(申請!A3:AW500,"select Col38,Col1,Col3,Col4,Col7,Col8,Col48,Col47,Col44,Col40,Col39 where Col1 is not null",0)'
-  );
+  sh.getRange('A5').setFormula(reviewQuery_());
+  var rule = SpreadsheetApp.newDataValidation().requireValueInList(['發布', '退回'], true).setAllowInvalid(false).build();
+  sh.getRange('K5:K200').setDataValidation(rule);
   fillFormulas();
-  alert_('已重整「審核」。若仍空白，請打開「申請」看第 3 列起有沒有送出紀錄，並看 AM 欄驗證結果。');
+  alert_('已重整「審核」。A–J 不要輸入。要退回或發布，在 K 欄選「退回」或「發布」。');
+}
+
+function onEdit(e) {
+  if (!e || !e.range) return;
+  var sh = e.range.getSheet();
+  if (sh.getName() !== '審核') return;
+  var row = e.range.getRow();
+  var col = e.range.getColumn();
+  if (row < 5) return;
+  if (col <= 10) {
+    sh.getRange('A5').setFormula(reviewQuery_());
+    return;
+  }
+  if (col !== 11) return;
+  var action = String(e.value || '');
+  var apply = e.source.getSheetByName('申請');
+  var target = findApplyRow_(apply, sh.getRange(row, 1).getValue(), sh.getRange(row, 5).getValue());
+  e.range.setValue('');
+  if (!target) return;
+  var cStatus = col_(apply, '驗證結果');
+  if (action === '退回') {
+    apply.getRange(target, cStatus).setValue('退回');
+    return;
+  }
+  if (action === '發布') {
+    try {
+      var type = String(apply.getRange(target, col_(apply, '申請類型')).getValue());
+      if (type === '學派初創') publishFoundingRow_(e.source, apply, target);
+      else publishOpsRow_(e.source, apply, target);
+      apply.getRange(target, cStatus).setValue('已發布');
+    } catch (err) {
+      apply.getRange(target, cStatus).setNote(String(err.message || err));
+    }
+  }
+}
+
+function findApplyRow_(apply, appId, schoolName) {
+  var last = apply.getLastRow();
+  if (last < 3) return 0;
+  var cId = col_(apply, '申請ID');
+  var cName = col_(apply, '學派名');
+  var ids = apply.getRange(3, cId, last - 2, 1).getValues();
+  var names = apply.getRange(3, cName, last - 2, 1).getValues();
+  var id = String(appId || '');
+  var name = String(schoolName || '');
+  for (var i = 0; i < ids.length; i++) {
+    if (id && String(ids[i][0]) === id) return i + 3;
+  }
+  for (var j = 0; j < names.length; j++) {
+    if (name && String(names[j][0]) === name) return j + 3;
+  }
+  return 0;
 }
 
 function healthCheck() {
