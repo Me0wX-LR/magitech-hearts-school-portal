@@ -23,13 +23,30 @@ function onOpen() {
     {name: '複製驗算公式', functionName: 'fillFormulas'},
     {name: '發布目前選取的一列', functionName: 'publishSelected'},
     {name: '發布所有待審的初創申請', functionName: 'publishApproved'},
-    {name: '發布所有待審的運營申請', functionName: 'publishOps'}
+    {name: '發布所有待審的運營申請', functionName: 'publishOps'},
+    {name: '重整審核表', functionName: 'rebuildReviewTab'}
   ]);
 }
 
 function alert_(msg) {
   try { SpreadsheetApp.getUi().alert(String(msg).slice(0, 1800)); }
   catch (e) { Logger.log(msg); }
+}
+
+function rebuildReviewTab() {
+  var ss = master_();
+  var sh = ss.getSheetByName('審核');
+  if (!sh) throw new Error('沒有「審核」工作表');
+  sh.getRange('A5:Z500').clearContent();
+  sh.getRange('A4:K4').setValues([[
+    '申請ID', '時間', '申請類型', '管理人', '學派名', '信條',
+    '藏書顯示草稿', '特記顯示草稿', '剩餘功績點', '驗證訊息', '驗證結果'
+  ]]);
+  sh.getRange('A5').setFormula(
+    '=IFERROR(QUERY(申請!A3:AW500,"select Col38,Col1,Col3,Col4,Col7,Col8,Col48,Col47,Col44,Col40,Col39 where Col1 is not null and Col39<>\'已發布\' and Col39<>\'退回\'",0),"申請表沒有可審的列。請先看「申請」工作表有沒有資料，並執行「複製驗算公式」。")'
+  );
+  fillFormulas();
+  alert_('已重整「審核」。若仍空白，請打開「申請」看第 3 列起有沒有送出紀錄，並看 AM 欄驗證結果。');
 }
 
 function healthCheck() {
