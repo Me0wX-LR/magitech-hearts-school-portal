@@ -42,8 +42,9 @@ function rebuildReviewTab() {
     '申請ID', '時間', '申請類型', '管理人', '學派名', '信條',
     '藏書顯示草稿', '特記顯示草稿', '剩餘功績點', '驗證訊息', '驗證結果'
   ]]);
+  // QUERY uses Col numbers so it survives zh-TW separators. No IFERROR — empty 申請 should look empty, errors should be visible.
   sh.getRange('A5').setFormula(
-    '=IFERROR(QUERY(申請!A3:AW500,"select Col38,Col1,Col3,Col4,Col7,Col8,Col48,Col47,Col44,Col40,Col39 where Col1 is not null and Col39<>\'已發布\' and Col39<>\'退回\'",0),"申請表沒有可審的列。請先看「申請」工作表有沒有資料，並執行「複製驗算公式」。")'
+    '=QUERY(申請!A3:AW500,"select Col38,Col1,Col3,Col4,Col7,Col8,Col48,Col47,Col44,Col40,Col39 where Col1 is not null",0)'
   );
   fillFormulas();
   alert_('已重整「審核」。若仍空白，請打開「申請」看第 3 列起有沒有送出紀錄，並看 AM 欄驗證結果。');
