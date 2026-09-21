@@ -211,18 +211,17 @@ function isSchoolName_(name) {
 }
 
 function schoolListRows_(sh) {
-  var last = Math.max(sh.getLastRow(), 20);
+  var last = Math.max(sh.getLastRow(), 2);
   var rows = [];
-  var r;
-  for (r = 2; r <= 16; r++) rows.push(r);
-  for (r = 20; r <= last; r++) rows.push(r);
+  for (var r = 2; r <= last; r++) rows.push(r);
   return rows;
 }
 
 function nextCustomSchoolRow_(list) {
-  var last = Math.max(list.getLastRow(), 20);
-  for (var r = 20; r <= last + 5; r++) {
-    if (!String(list.getRange(r, 1).getValue() || '').trim()) return r;
+  var last = Math.max(list.getLastRow(), 16);
+  for (var r = 17; r <= last + 5; r++) {
+    var v = String(list.getRange(r, 1).getValue() || '').trim();
+    if (!v) return r;
   }
   return last + 1;
 }
