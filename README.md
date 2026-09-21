@@ -45,10 +45,10 @@ Repo Settings → Pages → Build from **main** / **root** (`/`).
 在**戰役用**自動角卡（不要改公開「請自行複製副本」範本也行，但戰役檔一定要改）的「學派表」A1：
 
 ```
-=IMPORTRANGE("1lBDzpsWRfRiL2Bi1wR5jkeDEfZJKPz-loS3m24q0esc","學派表!A1:D")
+=QUERY(IMPORTRANGE("1lBDzpsWRfRiL2Bi1wR5jkeDEfZJKPz-loS3m24q0esc","學派表!A1:D200"),"select * where Col1 is not null and not Col1 contains '官方 15' and not Col1 starts with '↑'",1)
 ```
 
-允許存取。學派下拉改成 `'學派表'!$A$2:$A$200`。
+自創學派寫在第 20 列起。允許存取。學派下拉改成 `'學派表'!$A$2:$A$200`。
 
 Master 請設「知道連結的人可**檢視**」；審核者可編輯。玩家不必進試算表。
 

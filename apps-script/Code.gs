@@ -155,27 +155,56 @@ function doGet(e) {
   }
 }
 
+function isSchoolName_(name) {
+  name = String(name || '').trim();
+  if (!name) return false;
+  if (name.charAt(0) === '↑') return false;
+  if (name.indexOf('官方 15') >= 0) return false;
+  if (name.indexOf('占位') >= 0) return false;
+  if (name.indexOf('請自行') >= 0) return false;
+  if (name.indexOf('不要手寫') >= 0) return false;
+  return true;
+}
+
+function schoolListRows_(sh) {
+  var last = Math.max(sh.getLastRow(), 20);
+  var rows = [];
+  var r;
+  for (r = 2; r <= 16; r++) rows.push(r);
+  for (r = 20; r <= last; r++) rows.push(r);
+  return rows;
+}
+
+function nextCustomSchoolRow_(list) {
+  var last = Math.max(list.getLastRow(), 20);
+  for (var r = 20; r <= last + 5; r++) {
+    if (!String(list.getRange(r, 1).getValue() || '').trim()) return r;
+  }
+  return last + 1;
+}
+
 function listSchools_() {
   var sh = master_().getSheetByName('學派表');
-  var values = sh.getRange(2, 1, Math.max(sh.getLastRow() - 1, 1), 8).getValues();
   var out = [];
-  for (var i = 0; i < values.length; i++) {
-    var name = String(values[i][0] || '').trim();
-    if (!name) continue;
-    var status = String(values[i][7] || '');
-    if (status === '停用') continue;
+  var rows = schoolListRows_(sh);
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var row = sh.getRange(r, 1, 1, 8).getValues()[0];
+    var name = String(row[0] || '').trim();
+    if (!isSchoolName_(name)) continue;
+    if (String(row[7] || '') === '停用') continue;
     out.push({
       name: name,
-      creed: values[i][1],
-      magic: values[i][2],
-      note: values[i][3],
-      source: values[i][4] || '',
-      manager: values[i][5] || '',
+      creed: row[1],
+      magic: row[2],
+      note: row[3],
+      source: row[4] || '',
+      manager: row[5] || '',
       學派: name,
-      信條: values[i][1],
-      學派魔法: values[i][2],
-      特記事項: values[i][3],
-      來源: values[i][4]
+      信條: row[1],
+      學派魔法: row[2],
+      特記事項: row[3],
+      來源: row[4]
     });
   }
   return out;
@@ -436,9 +465,10 @@ function scoreRow_(sh, r) {
   var list = master_().getSheetByName('學派表');
   var dup = false;
   if (name && list) {
-    var names = list.getRange('A2:A').getValues();
-    for (var i = 0; i < names.length; i++) {
-      if (String(names[i][0]) === name) dup = true;
+    var rows = schoolListRows_(list);
+    for (var i = 0; i < rows.length; i++) {
+      var existing = String(list.getRange(rows[i], 1).getValue() || '').trim();
+      if (isSchoolName_(existing) && existing === name) dup = true;
     }
   }
 
@@ -669,10 +699,10 @@ function findCardRow_(ss, name) {
 
 function findListRow_(ss, name) {
   var sh = ss.getSheetByName('學派表');
-  var last = sh.getLastRow();
-  var names = sh.getRange(2, 1, Math.max(last - 1, 1), 1).getValues();
-  for (var i = 0; i < names.length; i++) {
-    if (String(names[i][0]) === name) return i + 2;
+  var rows = schoolListRows_(sh);
+  for (var i = 0; i < rows.length; i++) {
+    var n = String(sh.getRange(rows[i], 1).getValue() || '').trim();
+    if (isSchoolName_(n) && n === name) return rows[i];
   }
   throw new Error('學派表找不到：' + name);
 }
@@ -815,8 +845,11 @@ function publishFoundingRow_(ss, apply, r) {
   var get = function (h) { return apply.getRange(r, col_(apply, h)).getValue(); };
   var name = String(get('學派名')).trim();
   var list = ss.getSheetByName('學派表');
-  var existing = list.getRange('A2:A').getValues().map(function (row) { return String(row[0]); });
-  if (existing.indexOf(name) >= 0) throw new Error('學派名已存在：' + name);
+  var rows = schoolListRows_(list);
+  for (var i = 0; i < rows.length; i++) {
+    var existing = String(list.getRange(rows[i], 1).getValue() || '').trim();
+    if (isSchoolName_(existing) && existing === name) throw new Error('學派名已存在：' + name);
+  }
   var sid = nextSchoolId_(ss);
   var creed = String(get('信條'));
   var books = String(get('藏書顯示草稿'));
@@ -824,7 +857,7 @@ function publishFoundingRow_(ss, apply, r) {
   var manager = String(get('管理人'));
   var remain = get('剩餘功績點');
   var now = new Date();
-  var nextList = Math.max(list.getLastRow() + 1, 17);
+  var nextList = nextCustomSchoolRow_(list);
   list.getRange(nextList, 1, 1, 10).setValues([[
     name, creed, books, notes, '自創', manager, 1, '生效中', sid, now
   ]]);
