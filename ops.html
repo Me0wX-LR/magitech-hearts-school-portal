@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>運營／升級｜School Application Portal</title>
+  <link rel="stylesheet" href="assets/style.css?v=3">
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <p class="kicker">School Application Portal</p>
+      <h1>學派運營／升級</h1>
+      <p class="lede">已核准的自創學派才能用這頁。送出後仍要 GM 在 master 發布，名冊與自動角卡才會改。</p>
+      <nav class="bar">
+        <a class="btn" href="index.html">返回名冊</a>
+        <a class="btn" href="apply.html">改申請新學派</a>
+      </nav>
+    </header>
+    <div id="banner"></div>
+    <div class="math sticky" id="statusBox">讀取已核准學派……</div>
+
+    <form class="wizard" id="form" method="post" accept-charset="UTF-8">
+      <input type="hidden" name="申請類型" id="typeField" value="運營變更">
+      <input type="hidden" name="return" id="returnField">
+      <input type="hidden" name="學派名" id="nameHidden">
+      <input type="hidden" name="運營_目標學派" id="targetHidden">
+      <input type="hidden" name="運營_升級" id="upHidden" value="否">
+      <input type="hidden" name="是否追加第二本" id="extraHidden" value="否">
+      <input type="hidden" name="追加藏書序號" id="extraId">
+      <input type="hidden" name="優勢" id="advHidden" value="不選擇優勢">
+      <input type="hidden" name="劣勢" id="disHidden" value="不選擇劣勢">
+      <input type="hidden" name="限制樣式" id="styleHidden">
+      <input type="hidden" name="運營_獲得條件" id="gainCond">
+      <input type="hidden" name="運營_獲得點數" id="gainPts" value="0">
+      <input type="hidden" name="追加魔法是否已由本學派PC習得" value="否">
+
+      <label>管理人（必填）</label>
+      <input name="管理人" required maxlength="80">
+      <label>要變更的學派</label>
+      <select id="schoolPick"><option value="">載入中……</option></select>
+      <p class="hint" id="schoolHint"></p>
+
+      <p class="rule">本局結束、個人功績點結算之後，才能登學派功績點。升級 COST：1→2＝10，2→3＝20，3→4＝30。</p>
+
+      <label class="check"><input type="checkbox" id="wantGain"> 登記本局獲得的學派功績點</label>
+      <div id="gainBox" hidden>
+        <label class="check"><input type="checkbox" class="gain" value="人員"> 人員：學派增加了魔法使（+1）</label>
+        <label class="check"><input type="checkbox" class="gain" value="殲滅"> 殲滅：魔法戰勝過其他學派（+1）</label>
+        <label class="check"><input type="checkbox" class="gain" value="共鬥"> 共鬥：與其他學派關係改善（+1）</label>
+        <label class="check"><input type="checkbox" class="gain" value="名聲"> 名聲：有成員完成信條（+1）</label>
+        <label class="check"><input type="checkbox" class="gain" value="成員活躍"> 成員活躍：有成員完成使命（+1／人，填人數）</label>
+        <div id="activeBox" hidden>
+          <label>完成使命的 PC 數</label>
+          <input id="activeN" inputmode="numeric" value="1">
+        </div>
+      </div>
+
+      <label class="check"><input type="checkbox" id="wantUp"> 升級（支付目前等級的 COST）</label>
+      <p class="hint" id="upHint"></p>
+
+      <label class="check"><input type="checkbox" id="wantBook"> 追加藏書</label>
+      <div id="bookBox" hidden>
+        <label>分類</label>
+        <select name="追加藏書分類" id="extraCat"></select>
+        <label>選擇魔法</label>
+        <select id="extraPick"><option value="">請先選分類</option></select>
+        <p class="hint" id="extraHint"></p>
+      </div>
+
+      <label class="check"><input type="checkbox" id="wantTrait"> 追加特記（優勢或劣勢擇一）</label>
+      <div id="traitBox" hidden>
+        <label>種類</label>
+        <select id="traitPick">
+          <option value="">請選擇</option>
+          <option value="adv:備品：魔素（COST 2）" data-key="mana">優勢 備品：魔素（COST 2）</option>
+          <option value="adv:備品：道具（COST＝道具功績點×3）" data-key="item">優勢 備品：道具（功績×3）</option>
+          <option value="adv:專業性（COST 3）" data-key="pro">優勢 專業性（COST 3）</option>
+          <option value="adv:獨有的魔法體系（COST 5）" data-key="unique">優勢 獨有的魔法體系（COST 5）</option>
+          <option value="adv:異境大本營（COST 5）" data-key="base">優勢 異境大本營（COST 5）</option>
+          <option value="adv:學派特性（COST＝預兆COST×5）" data-key="omen">優勢 學派特性（預兆×5）</option>
+          <option value="dis:限制：領域（COST 1）" data-key="domain">劣勢 限制：領域（+1）</option>
+          <option value="dis:限制：樣式（COST 2）" data-key="style">劣勢 限制：樣式（+2）</option>
+          <option value="dis:藏書缺失（COST 3）" data-key="missing">劣勢 藏書缺失（+3）</option>
+          <option value="dis:封建（COST 3）" data-key="feudal">劣勢 封建（+3）</option>
+          <option value="dis:稀薄（COST 4）" data-key="thin">劣勢 稀薄（+4）</option>
+          <option value="dis:學派病（COST＝病強度）" data-key="disease">劣勢 學派病（+強度）</option>
+        </select>
+        <div class="reveal" data-for="mana">
+          <label>魔素</label>
+          <select name="備品魔素"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option></select>
+        </div>
+        <div class="reveal" data-for="item">
+          <label>道具名</label>
+          <input name="備品道具名">
+          <label>道具功績點</label>
+          <select name="備品道具功績點"><option></option><option>1</option><option>2</option></select>
+        </div>
+        <div class="reveal" data-for="pro">
+          <label>判定</label>
+          <select name="專業性判定"><option></option><option>調查判定</option><option>調律判定</option><option>事件判定</option><option>為使用咒文的指定特技判定</option><option>抵抗判定</option></select>
+        </div>
+        <div class="reveal" data-for="unique">
+          <label>體系</label>
+          <select name="獨有體系"><option></option><option>咒文</option><option>召喚</option></select>
+        </div>
+        <div class="reveal" data-for="base">
+          <label>世界法則</label>
+          <select name="世界法則阻礙"><option></option><option>召喚阻礙</option><option>咒文阻礙</option><option>抵抗阻礙</option><option>復活阻礙</option><option>介入阻礙</option></select>
+        </div>
+        <div class="reveal" data-for="omen">
+          <label>預兆</label>
+          <select name="學派特性預兆"><option></option><option>臨床（COST 1→特記 5）</option><option>惡食（COST 1→特記 5）</option><option>異境血脈（COST 2→特記 10）</option><option>復仇心（COST 2→特記 10）</option><option>古老魔法（COST 3→特記 15）</option></select>
+        </div>
+        <div class="reveal" data-for="domain">
+          <label>領域</label>
+          <select name="限制領域"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option></select>
+        </div>
+        <div class="reveal" data-for="style">
+          <label class="check"><input type="checkbox" class="stylePick" value="學究"> 學究</label>
+          <label class="check"><input type="checkbox" class="stylePick" value="世俗"> 世俗</label>
+          <label class="check"><input type="checkbox" class="stylePick" value="理想"> 理想</label>
+        </div>
+        <div class="reveal" data-for="missing">
+          <label>缺失種類</label>
+          <select name="藏書缺失種類"><option></option><option>星</option><option>獸</option><option>力</option><option>歌</option><option>夢</option><option>闇</option><option>全</option><option>無</option></select>
+        </div>
+        <div class="reveal" data-for="disease">
+          <label>病名</label>
+          <input name="學派病名稱">
+          <label>強度</label>
+          <input name="學派病強度" inputmode="numeric">
+        </div>
+      </div>
+
+      <label>申請備註</label>
+      <textarea name="申請備註" placeholder="可寫本局劇名、GM 名字"></textarea>
+
+      <div class="math" id="math"></div>
+      <nav class="bar">
+        <button type="submit" class="btn primary" id="send" disabled>送出給 GM 審核</button>
+      </nav>
+    </form>
+  </div>
+  <script src="assets/config.js?v=3"></script>
+  <script src="assets/common.js?v=3"></script>
+  <script src="assets/ops.js?v=3"></script>
+</body>
+</html>

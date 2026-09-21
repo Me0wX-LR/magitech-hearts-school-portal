@@ -20,9 +20,10 @@ function master_() {
 function onOpen() {
   SpreadsheetApp.getActive().addMenu('學派統合', [
     {name: '健康檢查', functionName: 'healthCheck'},
-    {name: '寫入一筆測試申請', functionName: 'testDummyApplication'},
     {name: '複製驗算公式', functionName: 'fillFormulas'},
-    {name: '發布已核准的初創申請', functionName: 'publishApproved'}
+    {name: '發布目前選取的一列', functionName: 'publishSelected'},
+    {name: '發布所有待審的初創申請', functionName: 'publishApproved'},
+    {name: '發布所有待審的運營申請', functionName: 'publishOps'}
   ]);
 }
 
@@ -57,6 +58,7 @@ function doGet(e) {
   try {
     if (action === 'health') return jsonp_(e, {ok: true, sheet: master_().getName()});
     if (action === 'schools') return jsonp_(e, {ok: true, schools: listSchools_()});
+    if (action === 'cards') return jsonp_(e, {ok: true, cards: listCards_()});
     return jsonp_(e, {ok: false, error: 'unknown action'});
   } catch (err) {
     return jsonp_(e, {ok: false, error: String(err.message || err)});
@@ -87,6 +89,55 @@ function listSchools_() {
     });
   }
   return out;
+}
+
+function listCards_() {
+  var sh = master_().getSheetByName('學派卡');
+  var last = sh.getLastRow();
+  if (last < 3) return [];
+  var values = sh.getRange(3, 1, last - 2, 20).getValues();
+  var books = bookCounts_();
+  var out = [];
+  for (var i = 0; i < values.length; i++) {
+    var name = String(values[i][1] || '').trim();
+    if (!name) continue;
+    if (String(values[i][19]) === '停用') continue;
+    var sid = String(values[i][0] || '');
+    var bc = books[sid] || {n: 0, exp: 0, org: 0};
+    out.push({
+      id: sid,
+      name: name,
+      manager: values[i][2],
+      level: Number(values[i][8]) || 1,
+      remain: Number(values[i][12]) || 0,
+      books: bc.n,
+      maxBooks: Number(values[i][10]) || 2,
+      cap: Number(values[i][11]) || 3,
+      adv: Number(values[i][17]) || 0,
+      dis: Number(values[i][18]) || 0,
+      expCount: bc.exp,
+      orgCount: bc.org
+    });
+  }
+  return out;
+}
+
+function bookCounts_() {
+  var sh = master_().getSheetByName('藏書明細');
+  var last = sh.getLastRow();
+  var map = {};
+  if (last < 2) return map;
+  var values = sh.getRange(2, 1, last - 1, 6).getValues();
+  for (var i = 0; i < values.length; i++) {
+    var sid = String(values[i][0] || '');
+    if (!sid) continue;
+    if (!map[sid]) map[sid] = {n: 0, exp: 0, org: 0};
+    map[sid].n++;
+    var cat = String(values[i][5] || '');
+    if (cat.indexOf('經歷') >= 0) map[sid].exp++;
+    if (cat.indexOf('機關') >= 0) map[sid].org++;
+  }
+  return map;
 }
 
 function doPost(e) {
@@ -243,7 +294,206 @@ function publishApproved() {
     apply.getRange(r, cStatus).setValue('已發布');
     published++;
   }
-  alert_('已發布 ' + published + ' 筆。略過 ' + skipped + ' 筆。');
+  alert_('已發布 ' + published + ' 筆初創。略過 ' + skipped + ' 筆。');
+}
+
+function publishSelected() {
+  var ss = master_();
+  var apply = ss.getSheetByName('申請');
+  var cell = apply.getActiveCell();
+  var r = cell.getRow();
+  if (r < 2) { alert_('請先點「申請」工作表裡要發布的那一列。'); return; }
+  var status = String(apply.getRange(r, col_(apply, '驗證結果')).getValue());
+  if (status === '已發布') { alert_('這一列已經發布過。'); return; }
+  if (status === '退回') { alert_('這一列已退回，不會發布。'); return; }
+  var type = String(apply.getRange(r, col_(apply, '申請類型')).getValue());
+  try {
+    if (type === '學派初創') publishFoundingRow_(ss, apply, r);
+    else publishOpsRow_(ss, apply, r);
+    apply.getRange(r, col_(apply, '驗證結果')).setValue('已發布');
+    alert_('已發布第 ' + r + ' 列（' + type + '）。');
+  } catch (err) {
+    alert_('發布失敗：' + err.message);
+  }
+}
+
+function publishOps() {
+  var ss = master_();
+  var apply = ss.getSheetByName('申請');
+  var last = apply.getLastRow();
+  if (last < 2) { alert_('沒有申請列。'); return; }
+  var cStatus = col_(apply, '驗證結果');
+  var published = 0, skipped = 0;
+  for (var r = 2; r <= last; r++) {
+    var status = String(apply.getRange(r, cStatus).getValue());
+    if (status !== '待審核') continue;
+    var type = String(apply.getRange(r, col_(apply, '申請類型')).getValue());
+    if (type.indexOf('運營') !== 0) { skipped++; continue; }
+    try {
+      publishOpsRow_(ss, apply, r);
+      apply.getRange(r, cStatus).setValue('已發布');
+      published++;
+    } catch (err) {
+      skipped++;
+      Logger.log('row ' + r + ': ' + err.message);
+    }
+  }
+  alert_('已發布 ' + published + ' 筆運營。略過 ' + skipped + ' 筆。');
+}
+
+function findCardRow_(ss, name) {
+  var sh = ss.getSheetByName('學派卡');
+  var last = sh.getLastRow();
+  if (last < 3) throw new Error('沒有學派卡資料');
+  var names = sh.getRange(3, 2, last - 2, 1).getValues();
+  for (var i = 0; i < names.length; i++) {
+    if (String(names[i][0]) === name) return i + 3;
+  }
+  throw new Error('學派卡找不到：' + name);
+}
+
+function findListRow_(ss, name) {
+  var sh = ss.getSheetByName('學派表');
+  var last = sh.getLastRow();
+  var names = sh.getRange(2, 1, Math.max(last - 1, 1), 1).getValues();
+  for (var i = 0; i < names.length; i++) {
+    if (String(names[i][0]) === name) return i + 2;
+  }
+  throw new Error('學派表找不到：' + name);
+}
+
+function levelUpCost_(level) {
+  if (level === 1) return 10;
+  if (level === 2) return 20;
+  if (level === 3) return 30;
+  if (level === 4) return 50;
+  throw new Error('無法再升級');
+}
+
+function extraBookCost_(cat, expCount, orgCount, mid) {
+  if (cat === '經歷魔法') return 3 + Number(expCount || 0);
+  if (cat === '機關魔法') return 4 + Number(orgCount || 0);
+  if (cat === '學派魔法') return 3;
+  if (cat === '餐飲魔法' || cat === '醫療魔法') return 2;
+  if (String(cat).indexOf('遺失') >= 0) {
+    var dir = master_().getSheetByName('魔法目錄');
+    var data = dir.getRange(2, 1, Math.max(dir.getLastRow() - 1, 1), 7).getValues();
+    var idNum = Number(mid);
+    for (var i = 0; i < data.length; i++) {
+      if (Number(data[i][0]) === idNum) return 2 + Number(data[i][6] || 0);
+    }
+    throw new Error('追加藏書序號無效');
+  }
+  throw new Error('未知藏書分類');
+}
+
+function rebuildDisplay_(ss, sid, name) {
+  var det = ss.getSheetByName('藏書明細');
+  var last = det.getLastRow();
+  var magics = [];
+  if (last >= 2) {
+    var rows = det.getRange(2, 1, last - 1, 5).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]) === sid) magics.push(rows[i][4] || ('【' + rows[i][3] + '】'));
+    }
+  }
+  var spec = ss.getSheetByName('特記明細');
+  var notes = [];
+  last = spec.getLastRow();
+  if (last >= 2) {
+    var srows = spec.getRange(2, 1, last - 1, 7).getValues();
+    for (var j = 0; j < srows.length; j++) {
+      if (String(srows[j][0]) === sid) notes.push(String(srows[j][2] || ''));
+    }
+  }
+  return {books: magics.join('\n'), notes: notes.join('\n')};
+}
+
+function publishOpsRow_(ss, apply, r) {
+  var get = function (h) { return apply.getRange(r, col_(apply, h)).getValue(); };
+  var name = String(get('運營_目標學派') || get('學派名')).trim();
+  if (!name) throw new Error('沒有目標學派');
+  var card = ss.getSheetByName('學派卡');
+  var cr = findCardRow_(ss, name);
+  var sid = String(card.getRange(cr, 1).getValue());
+  var level = Number(card.getRange(cr, 9).getValue()) || 1;
+  var remain = Number(card.getRange(cr, 13).getValue()) || 0;
+  var gained = Number(card.getRange(cr, 14).getValue()) || 0;
+  var spent = Number(card.getRange(cr, 15).getValue()) || 0;
+  var advN = Number(card.getRange(cr, 18).getValue()) || 0;
+  var disN = Number(card.getRange(cr, 19).getValue()) || 0;
+  var now = new Date();
+  var flow = ss.getSheetByName('功績點流水');
+  var counts = bookCounts_()[sid] || {n: 0, exp: 0, org: 0};
+
+  var add = Number(get('運營_獲得點數')) || 0;
+  if (add > 0) {
+    remain += add;
+    gained += add;
+    flow.appendRow([now, sid, name, '運營獲得', get('運營_獲得條件'), add, remain, get('申請ID'), get('申請備註'), get('管理人')]);
+  }
+
+  if (String(get('運營_升級')) === '是') {
+    var cost = levelUpCost_(level);
+    if (remain < cost) throw new Error('升級點數不足（需要 ' + cost + '）');
+    remain -= cost;
+    spent += cost;
+    level += 1;
+    card.getRange(cr, 9).setValue(level);
+    card.getRange(cr, 10).setValue(level);
+    card.getRange(cr, 11).setValue(level * 2);
+    card.getRange(cr, 12).setValue(level + 2);
+    flow.appendRow([now, sid, name, '升級', 'Lv' + (level - 1) + '→' + level, -cost, remain, get('申請ID'), '', get('管理人')]);
+  }
+
+  if (String(get('是否追加第二本')) === '是' && get('追加藏書序號')) {
+    var maxB = Number(card.getRange(cr, 11).getValue()) || 2;
+    if (counts.n >= maxB) throw new Error('已達最大藏書數');
+    var bcost = extraBookCost_(String(get('追加藏書分類')), counts.exp, counts.org, get('追加藏書序號'));
+    if (remain < bcost) throw new Error('追加藏書點數不足');
+    remain -= bcost;
+    spent += bcost;
+    appendBook_(ss.getSheetByName('藏書明細'), sid, name, get('追加藏書序號'), '追加', bcost, now);
+    flow.appendRow([now, sid, name, '追加藏書', get('追加藏書序號'), -bcost, remain, get('申請ID'), '', get('管理人')]);
+  }
+
+  var adv = String(get('優勢') || '');
+  var dis = String(get('劣勢') || '');
+  if (adv && adv !== '不選擇優勢') {
+    if (advN >= level) throw new Error('優勢數量不能超過學派等級');
+    var ac = Number(get('優勢COST')) || 0;
+    if (remain < ac) throw new Error('優勢 COST 不足');
+    remain -= ac;
+    spent += ac;
+    advN += 1;
+    ss.getSheetByName('特記明細').appendRow([sid, name, adv, '優勢', ac, '', '', '生效中', now]);
+    flow.appendRow([now, sid, name, '追加優勢', adv, -ac, remain, get('申請ID'), '', get('管理人')]);
+  }
+  if (dis && dis !== '不選擇劣勢') {
+    if (disN >= level) throw new Error('劣勢數量不能超過學派等級');
+    var dc = Number(get('劣勢COST')) || 0;
+    remain += dc;
+    gained += dc;
+    disN += 1;
+    ss.getSheetByName('特記明細').appendRow([sid, name, dis, '劣勢', dc, '', '', '生效中', now]);
+    flow.appendRow([now, sid, name, '追加劣勢', dis, dc, remain, get('申請ID'), '', get('管理人')]);
+  }
+
+  var disp = rebuildDisplay_(ss, sid, name);
+  card.getRange(cr, 13).setValue(remain);
+  card.getRange(cr, 14).setValue(gained);
+  card.getRange(cr, 15).setValue(spent);
+  card.getRange(cr, 16).setValue(disp.books);
+  card.getRange(cr, 17).setValue(disp.notes);
+  card.getRange(cr, 18).setValue(advN);
+  card.getRange(cr, 19).setValue(disN);
+
+  var lr = findListRow_(ss, name);
+  var list = ss.getSheetByName('學派表');
+  list.getRange(lr, 3).setValue(disp.books);
+  list.getRange(lr, 4).setValue(disp.notes);
+  list.getRange(lr, 7).setValue(level);
+  list.getRange(lr, 10).setValue(now);
 }
 
 function publishFoundingRow_(ss, apply, r) {
