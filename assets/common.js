@@ -32,7 +32,7 @@
     var cb = "mhgv_" + Math.random().toString(36).slice(2);
     var url = "https://docs.google.com/spreadsheets/d/" + id +
       "/gviz/tq?sheet=" + encodeURIComponent(sheetName) +
-      "&tqx=out:json;responseHandler:" + cb;
+      "&headers=0&tqx=" + encodeURIComponent("out:json;responseHandler:" + cb);
     return new Promise(function (resolve, reject) {
       var timer = setTimeout(function () {
         cleanup();
@@ -100,26 +100,62 @@
     }).filter(isRealSchool);
   }
 
+  function mergeSchools(official, others) {
+    var byName = {};
+    official.forEach(function (s) {
+      if (isRealSchool(s)) byName[s.name] = s;
+    });
+    others.forEach(function (s) {
+      if (!isRealSchool(s)) return;
+      var key = s.name || s.學派;
+      if (!key) return;
+      var prev = byName[key] || {};
+      byName[key] = {
+        name: key,
+        creed: s.creed || s.信條 || prev.creed || "",
+        magic: s.magic || s.學派魔法 || prev.magic || "",
+        note: s.note || s.特記事項 || prev.note || "",
+        source: s.source || s.來源 || prev.source || "",
+        manager: s.manager || s.管理人 || prev.manager || "",
+        approver: s.approver || s.核准GM || prev.approver || "",
+        contact: s.contact || s.核准GM聯絡方法 || prev.contact || "",
+        學派: key,
+        信條: s.creed || s.信條 || prev.creed || "",
+        學派魔法: s.magic || s.學派魔法 || prev.magic || "",
+        特記事項: s.note || s.特記事項 || prev.note || "",
+        來源: s.source || s.來源 || prev.source || "",
+        管理人: s.manager || s.管理人 || prev.manager || "",
+        核准GM: s.approver || s.核准GM || prev.approver || "",
+        核准GM聯絡方法: s.contact || s.核准GM聯絡方法 || prev.contact || ""
+      };
+    });
+    var order = official.map(function (s) { return s.name; });
+    var out = [];
+    order.forEach(function (n) {
+      if (byName[n]) {
+        out.push(byName[n]);
+        delete byName[n];
+      }
+    });
+    Object.keys(byName).forEach(function (n) { out.push(byName[n]); });
+    return out;
+  }
+
   function loadSchools() {
     var cfg = w.MH_CONFIG || {};
-    if (cfg.masterId) {
-      return gviz("學派表").then(function (data) {
-        var schools = schoolsFromGviz(data);
-        if (schools.length) return { ok: true, schools: schools, source: "sheet" };
-        throw new Error("empty");
-      }).catch(function () {
-        if (!cfg.webAppUrl) throw new Error("no source");
-        return jsonp(cfg.webAppUrl + "?action=schools").then(function (data) {
-          if (data && data.schools) data.schools = data.schools.filter(isRealSchool);
-          return data;
-        });
-      }).catch(function () {
-        return fetch("data/official.json").then(function (r) { return r.json(); })
-          .then(function (rows) { return { ok: true, fallback: true, schools: rows.filter(isRealSchool) }; });
+    return fetch("data/official.json").then(function (r) { return r.json(); }).then(function (official) {
+      var sheetP = cfg.masterId
+        ? gviz("學派表").then(schoolsFromGviz).catch(function () { return []; })
+        : Promise.resolve([]);
+      var appP = cfg.webAppUrl
+        ? jsonp(cfg.webAppUrl + "?action=schools").then(function (data) {
+          return (data && data.schools) || [];
+        }).catch(function () { return []; })
+        : Promise.resolve([]);
+      return Promise.all([sheetP, appP]).then(function (pair) {
+        return { ok: true, schools: mergeSchools(official, pair[0].concat(pair[1])) };
       });
-    }
-    return fetch("data/official.json").then(function (r) { return r.json(); })
-      .then(function (rows) { return { ok: true, fallback: true, schools: rows.filter(isRealSchool) }; });
+    });
   }
 
   w.MH = { jsonp: jsonp, loadSchools: loadSchools, isRealSchool: isRealSchool };
