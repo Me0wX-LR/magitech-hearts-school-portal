@@ -225,13 +225,28 @@ function nextCustomSchoolRow_(list) {
   return last + 1;
 }
 
+function gmIdentity_() {
+  var email = '';
+  try { email = Session.getActiveUser().getEmail() || ''; } catch (e) {}
+  if (!email) {
+    try { email = Session.getEffectiveUser().getEmail() || ''; } catch (e2) {}
+  }
+  return email || 'GM';
+}
+
+function ensureSchoolListHeaders_(sh) {
+  var heads = ['學派', '信條', '學派魔法', '特記事項', '來源', '管理人', '學派等級', '狀態', '學派ID', '最後更新', '核准GM'];
+  sh.getRange(1, 1, 1, heads.length).setValues([heads]);
+}
+
 function listSchools_() {
   var sh = master_().getSheetByName('學派表');
+  ensureSchoolListHeaders_(sh);
   var out = [];
   var rows = schoolListRows_(sh);
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
-    var row = sh.getRange(r, 1, 1, 8).getValues()[0];
+    var row = sh.getRange(r, 1, 1, 11).getValues()[0];
     var name = String(row[0] || '').trim();
     if (!isSchoolName_(name)) continue;
     if (String(row[7] || '') === '停用') continue;
@@ -242,11 +257,14 @@ function listSchools_() {
       note: row[3],
       source: row[4] || '',
       manager: row[5] || '',
+      approver: row[10] || '',
       學派: name,
       信條: row[1],
       學派魔法: row[2],
       特記事項: row[3],
-      來源: row[4]
+      來源: row[4],
+      管理人: row[5] || '',
+      核准GM: row[10] || ''
     });
   }
   return out;
@@ -920,8 +938,10 @@ function publishFoundingRow_(ss, apply, r) {
   var remain = get('剩餘功績點');
   var now = new Date();
   var nextList = nextCustomSchoolRow_(list);
-  list.getRange(nextList, 1, 1, 10).setValues([[
-    name, creed, books, notes, '自創', manager, 1, '生效中', sid, now
+  ensureSchoolListHeaders_(list);
+  var gm = gmIdentity_();
+  list.getRange(nextList, 1, 1, 11).setValues([[
+    name, creed, books, notes, '自創', manager, 1, '生效中', sid, now, gm
   ]]);
   var card = ss.getSheetByName('學派卡');
   var cr = Math.max(card.getLastRow() + 1, 3);
@@ -933,7 +953,7 @@ function publishFoundingRow_(ss, apply, r) {
     books, notes,
     get('優勢') && String(get('優勢')) !== '不選擇優勢' ? 1 : 0,
     get('劣勢') && String(get('劣勢')) !== '不選擇劣勢' ? 1 : 0,
-    '生效中', get('申請ID'), now, Session.getActiveUser().getEmail(), ''
+    '生效中', get('申請ID'), now, gm, ''
   ]]);
   var det = ss.getSheetByName('藏書明細');
   if (get('免費藏書序號')) appendBook_(det, sid, name, get('免費藏書序號'), '初創免費', 0, now);

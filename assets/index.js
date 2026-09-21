@@ -7,9 +7,13 @@
   function card(s) {
     var el = document.createElement("article");
     el.className = "card";
+    var who = [];
+    if (s.manager || s.管理人) who.push("管理人／創作者：" + (s.manager || s.管理人));
+    if (s.approver || s.核准GM) who.push("核准 GM：" + (s.approver || s.核准GM));
     el.innerHTML =
       '<span class="tag">' + escapeHtml(s.source || (s.來源 || "學派")) + "</span>" +
       "<h2>" + escapeHtml(s.name || s.學派 || "") + "</h2>" +
+      (who.length ? '<p class="hint">' + escapeHtml(who.join("　")) + "</p>" : "") +
       '<p class="magic">' + escapeHtml(s.magic || s.學派魔法 || "（無學派魔法）") + "</p>" +
       "<p>" + escapeHtml(s.creed || s.信條 || "") + "</p>" +
       "<p>" + escapeHtml(s.note || s.特記事項 || "") + "</p>";
