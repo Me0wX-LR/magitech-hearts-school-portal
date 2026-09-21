@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>學派統合名冊｜魔導書大戰</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <p class="kicker">Magitech Hearts · Magicalogia</p>
+      <h1>學派統合名冊</h1>
+      <p class="lede">官方與已核准的支流學派。申請經審核後寫入 Google 學派統合列表，自動角卡以 IMPORTRANGE 讀取。</p>
+      <nav class="bar">
+        <a class="btn primary" href="apply.html">申請支流學派</a>
+        <a class="btn" href="https://docs.google.com/spreadsheets/d/1lBDzpsWRfRiL2Bi1wR5jkeDEfZJKPz-loS3m24q0esc/edit" target="_blank" rel="noopener">開啟 master 試算表</a>
+      </nav>
+    </header>
+    <input class="search" id="q" type="search" placeholder="搜尋學派、信條、魔法……" aria-label="搜尋">
+    <p class="notice" id="status">讀取名冊中……</p>
+    <section class="grid" id="list"></section>
+    <footer>規則：《蒐集日記》3.06 學派初創。核准前不會出現在自動角卡下拉。</footer>
+  </div>
+  <script src="assets/config.js"></script>
+  <script src="assets/common.js"></script>
+  <script src="assets/index.js"></script>
+</body>
+</html>
